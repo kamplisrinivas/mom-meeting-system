@@ -1,35 +1,170 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import ActionItemForm from "../pages/ActionItemForm";
 
-const API_URL = "http://localhost:5000";
+const API_URL = "http://localhost:5001";
 
-export default function ActionItemForm({ momPointId, token, refreshMeetings, actionItems }) {
-  const [text, setText] = useState("");
-  const [responsibleUserId, setResponsibleUserId] = useState(2);
-  const [targetDate, setTargetDate] = useState("");
+export default function MomPointForm({ meetingId, token }) {
+  const [pointText, setPointText] = useState("");
+  const [momPoints, setMomPoints] = useState([]);
 
-  const addAction = async () => {
-    const res = await fetch(`${API_URL}/api/actions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ mom_point_id: momPointId, action_item: text, responsible_user_id: responsibleUserId, target_date: targetDate })
-    });
-    const data = await res.json();
-    if (data.success) {
-      setText("");
-      refreshMeetings();
+  // Fetch MOM points + their action items
+  const fetchMomPoints = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/mom/meeting/${meetingId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.success) {
+        const momPointsWithActions = await Promise.all(
+          data.data.map(async (mp) => {
+            const resActions = await fetch(`${API_URL}/api/actions/meeting/${mp.id}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            const actionsData = await resActions.json();
+            return { ...mp, action_items: actionsData.success ? actionsData.data : [] };
+          })
+        );
+        setMomPoints(momPointsWithActions);
+      }
+    } catch (err) {
+      console.error("Error fetching MOM points:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchMomPoints();
+  }, [meetingId]);
+
+  // Add new MOM point
+  const addMomPoint = async () => {
+    if (!pointText.trim()) return;
+    try {
+      const res = await fetch(`${API_URL}/api/mom`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ meeting_id: meetingId, point: pointText }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPointText("");
+        fetchMomPoints();
+      }
+    } catch (err) {
+      console.error(err);
     }
   };
 
   return (
-    <div style={{ marginTop: "5px" }}>
-      <input placeholder="Action item" value={text} onChange={e => setText(e.target.value)} />
-      <input type="date" value={targetDate} onChange={e => setTargetDate(e.target.value)} />
-      <button onClick={addAction}>Add Action</button>
-      {actionItems.map(a => (
-        <div key={a.id}>
-          * {a.action_item} - Responsible: {a.responsible_user_id} - Target: {new Date(a.target_date).toLocaleDateString()} - Status: {a.status}
-        </div>
-      ))}
+    <div style={{ marginTop: "20px" }}>
+      {/* Add MOM Point */}
+      <div style={addMomBox}>
+        <input
+          placeholder="Add MOM point"
+          value={pointText}
+          onChange={(e) => setPointText(e.target.value)}
+          style={input}
+        />
+        <button onClick={addMomPoint} style={button}>
+          Add MOM Point
+        </button>
+      </div>
+
+      {/* MOM Points List */}
+      <div style={{ marginTop: "20px" }}>
+        {momPoints.map((p) => (
+          <div key={p.id} style={momCard}>
+            <div style={momText}>
+              <strong>- {p.point}</strong>
+            </div>
+
+            {/* Toggleable Action Form */}
+            <ToggleActionForm
+              momPointId={p.id}
+              token={token}
+              refreshMeetings={fetchMomPoints}
+              actionItems={p.action_items || []}
+            />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
+
+// Toggleable Action Form per MOM point
+function ToggleActionForm({ momPointId, token, refreshMeetings, actionItems }) {
+  const [showForm, setShowForm] = useState(false);
+
+  return (
+    <div style={{ marginLeft: "20px" }}>
+      <button style={toggleButton} onClick={() => setShowForm(!showForm)}>
+        {showForm ? "Hide Actions" : "Add Action"}
+      </button>
+
+      {showForm && (
+        <div style={{ marginTop: "10px" }}>
+          <ActionItemForm
+            meetingId={momPointId}
+            token={token}
+            refreshMeetings={() => {
+              refreshMeetings();
+              setShowForm(false); // ✅ collapse after add
+            }}
+            actionItems={actionItems}
+          />
+        </div>
+      )}
+
+      {/* Existing action items */}
+      <div style={{ marginTop: "10px" }}>
+        {actionItems.map((a) => (
+          <div key={a.id} style={actionItemCard}>
+            <strong>{a.description}</strong>
+            <div style={actionDetails}>
+              Responsible: {a.assigned_to || "N/A"} | Target:{" "}
+              {a.due_date ? new Date(a.due_date).toLocaleDateString() : "N/A"} | Status:{" "}
+              {a.status}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ================= STYLES ================= */
+const addMomBox = { display: "flex", gap: "10px", marginBottom: "15px" };
+const input = { flex: 1, padding: "8px", borderRadius: "4px", border: "1px solid #ccc" };
+const button = {
+  padding: "8px 15px",
+  background: "#003366",
+  color: "white",
+  border: "none",
+  borderRadius: "4px",
+  cursor: "pointer",
+};
+const toggleButton = {
+  padding: "5px 10px",
+  background: "#0066cc",
+  color: "white",
+  border: "none",
+  borderRadius: "4px",
+  cursor: "pointer",
+  fontSize: "13px",
+};
+const momCard = {
+  background: "#f9f9f9",
+  padding: "15px",
+  borderRadius: "6px",
+  marginBottom: "12px",
+  borderLeft: "4px solid #003366",
+};
+const momText = { fontSize: "15px", marginBottom: "10px" };
+const actionItemCard = {
+  background: "#fff",
+  padding: "8px",
+  borderRadius: "4px",
+  marginBottom: "6px",
+  border: "1px solid #ddd",
+};
+const actionDetails = { fontSize: "13px", color: "#555" };

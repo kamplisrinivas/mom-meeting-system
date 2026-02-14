@@ -3,10 +3,16 @@ const router = express.Router();
 const authMiddleware = require("../middlewares/authMiddleware");
 const actionController = require("../controllers/action.controller");
 
-// CREATE ACTION ITEM
+// Create action item
 router.post("/", authMiddleware, actionController.createActionItem);
 
-// UPDATE ACTION STATUS
-router.put("/:id/status", authMiddleware, actionController.updateActionStatus);
+// Get all action items for a meeting
+router.get("/meeting/:meetingId", authMiddleware, actionController.getActionItemsByMeeting);
+
+// Update action item by ID
+router.put("/:id", authMiddleware, actionController.updateActionItem);
+
+// Delete action item by ID
+router.delete("/:id", authMiddleware, actionController.deleteActionItem);
 
 module.exports = router;

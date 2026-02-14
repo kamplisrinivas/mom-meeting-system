@@ -7,10 +7,15 @@ const authMiddleware = require("./middlewares/authMiddleware");
 
 const app = express();
 
+/* ================= MIDDLEWARE FIRST ================= */
 app.use(cors());
 app.use(express.json());
 
-// Routes
+/* ================= ROUTES ================= */
+
+const departmentRoutes = require("./routes/department.routes");
+app.use("/api/departments", departmentRoutes);
+
 const authRoutes = require("./routes/auth.routes");
 app.use("/api/auth", authRoutes);
 
@@ -26,12 +31,12 @@ app.use("/api/actions", actionRoutes);
 const dashboardRoutes = require("./routes/dashboard.routes");
 app.use("/api/dashboard", dashboardRoutes);
 
-// Health check
+/* ================= TEST ROUTES ================= */
+
 app.get("/", (req, res) => {
   res.send("MOM Backend API is running 🚀");
 });
 
-// DB test
 app.get("/db-test", async (req, res) => {
   try {
     await db.query("SELECT 1");
@@ -41,12 +46,12 @@ app.get("/db-test", async (req, res) => {
   }
 });
 
-// Protected test
 app.get("/api/auth/me", authMiddleware, (req, res) => {
   res.json({ success: true, user: req.user });
 });
 
-// 🚨 THIS IS CRITICAL
+/* ================= START SERVER ================= */
+
 const PORT = process.env.PORT || 5001;
 
 app.listen(PORT, () => {

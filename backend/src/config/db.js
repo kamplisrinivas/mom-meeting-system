@@ -5,6 +5,7 @@ const db = mysql.createPool({
   user: "root",
   password: "",   // if XAMPP default
   database: "mom_db",
+   port: 3307, // ⭐ add this if different
 });
 
 module.exports = db;

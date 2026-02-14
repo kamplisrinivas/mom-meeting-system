@@ -14,7 +14,7 @@ exports.login = async (req, res) => {
       `SELECT u.id, u.name, u.email, u.password, u.department_id,
               r.name AS role
        FROM users u
-       JOIN roles r ON u.role_id = r.id
+       LEFT JOIN roles r ON u.role_id = r.id
        WHERE u.email = ? AND u.is_active = 1`,
       [email]
     );
@@ -26,9 +26,13 @@ exports.login = async (req, res) => {
     const user = rows[0];
 
     const isMatch = await bcrypt.compare(password, user.password);
+
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
+
+    // ✅ fallback protection
+    const secret = process.env.JWT_SECRET || "momsecret";
 
     const token = jwt.sign(
       {
@@ -36,11 +40,12 @@ exports.login = async (req, res) => {
         role: user.role,
         department_id: user.department_id,
       },
-      process.env.JWT_SECRET,
+      secret,
       { expiresIn: "1d" }
     );
 
     res.json({
+      success: true,
       token,
       user: {
         id: user.id,
@@ -50,6 +55,7 @@ exports.login = async (req, res) => {
       },
     });
   } catch (err) {
+    console.error("LOGIN ERROR:", err); // ⭐ IMPORTANT
     res.status(500).json({ error: err.message });
   }
 };
