@@ -16,6 +16,9 @@ app.use(express.json());
 const departmentRoutes = require("./routes/department.routes");
 app.use("/api/departments", departmentRoutes);
 
+const employeeRoutes = require("./routes/employees");
+app.use("/api/employees", employeeRoutes);
+
 const authRoutes = require("./routes/auth.routes");
 app.use("/api/auth", authRoutes);
 

@@ -1,107 +1,108 @@
 const db = require("../config/db");
+const {
+  getMeetingRecipients,
+  sendMail,
+} = require("../services/emailService");
 
-// ================= CREATE MEETING =================
+/**
+ * =====================================
+ * CREATE MEETING + SEND EMAIL
+ * =====================================
+ */
 exports.createMeeting = async (req, res) => {
   try {
     const {
       title,
-      description,
       meeting_date,
       meeting_time,
       department_id,
       meeting_type,
       platform,
-      venue
+      venue,
     } = req.body;
 
-    // 🔹 Debug logging
-    console.log("REQ.BODY:", req.body);
-
-    // 🔹 Basic required fields
-    if (!title?.trim() || !meeting_date || !meeting_time || !meeting_type) {
-      return res.status(400).json({
-        success: false,
-        message: "Please fill all required fields"
-      });
-    }
-
-    // 🔹 Combine DATE + TIME into DATETIME
-    const meeting_datetime = `${meeting_date} ${meeting_time}:00`;
-    console.log("meeting_datetime:", meeting_datetime);
-
-    // 🔹 Online meeting validation
-    if (meeting_type === "Online" && !platform?.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: "Platform is required for Online meeting"
-      });
-    }
-
-    // 🔹 Offline meeting validation
-    if (meeting_type === "Offline" && !venue?.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: "Venue is required for Offline meeting"
-      });
-    }
-
-    // ✅ FIXED: Match ALL schema columns exactly (9 columns)
+    // ✅ insert meeting
     const [result] = await db.query(
-      `INSERT INTO meetings 
-       (title, description, meeting_date, meeting_time, department_id, meeting_type, platform, venue, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO meetings
+      (title, meeting_date, meeting_time, department_id, meeting_type, platform, venue, created_by)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        title.trim(),
-        description || null,           // ✅ DESCRIPTION SAVES NOW
-        meeting_datetime,              // ✅ DATETIME format
-        meeting_time || null,          // ✅ Schema column included
-        department_id || null,
+        title,
+        meeting_date,
+        meeting_time,
+        department_id,
         meeting_type,
-        meeting_type === "Online" ? platform.trim() : null,
-        meeting_type === "Offline" ? venue.trim() : null,
-        req.user.id
+        platform,
+        venue,
+        req.user.id,
       ]
     );
 
-    console.log("Meeting created with ID:", result.insertId);
+    // ✅ get department name
+    const [deptRows] = await db.query(
+      `SELECT name FROM departments WHERE id = ?`,
+      [department_id]
+    );
+
+    const departmentName = deptRows[0]?.name;
+
+    // ✅ get recipients
+    const recipients = await getMeetingRecipients(departmentName);
+
+    // ✅ send email (ONLY if emails exist)
+    if (recipients.length > 0) {
+      await sendMail(
+        recipients.join(","),
+        "📅 Meeting Scheduled",
+        `
+        <h3>Meeting Scheduled</h3>
+        <p><b>Title:</b> ${title}</p>
+        <p><b>Date:</b> ${meeting_date}</p>
+        <p><b>Time:</b> ${meeting_time}</p>
+        <p><b>Type:</b> ${meeting_type}</p>
+        <p><b>Platform:</b> ${platform || "-"}</p>
+        <p><b>Venue:</b> ${venue || "-"}</p>
+        `
+      );
+    }
 
     res.json({
       success: true,
-      message: "Meeting created successfully",
-      meeting_id: result.insertId
+      message: "Meeting created & email sent",
+      meeting_id: result.insertId,
+      emails_sent_to: recipients.length,
     });
-
   } catch (err) {
-    console.error("CREATE MEETING ERROR:", err.code, err.message);
+    console.error("Create meeting error:", err);
     res.status(500).json({
       success: false,
-      message: "Server error while creating meeting",
-      error: err.message
+      error: err.message,
     });
   }
 };
 
-// ================= LIST MEETINGS =================
+/**
+ * =====================================
+ * GET ALL MEETINGS
+ * =====================================
+ */
 exports.getAllMeetings = async (req, res) => {
   try {
-    const [rows] = await db.query(
-      `SELECT m.*, d.name AS department_name
-       FROM meetings m
-       LEFT JOIN departments d ON d.id = m.department_id
-       ORDER BY m.meeting_date DESC`
-    );
+    const [rows] = await db.query(`
+      SELECT m.*, d.name AS department_name
+      FROM meetings m
+      LEFT JOIN departments d ON d.id = m.department_id
+      ORDER BY m.meeting_date DESC
+    `);
 
     res.json({
       success: true,
-      data: rows
+      data: rows,
     });
-
   } catch (err) {
-    console.error("GET MEETINGS ERROR:", err);
     res.status(500).json({
       success: false,
-      message: "Server error while fetching meetings",
-      error: err.message
+      error: err.message,
     });
   }
 };
