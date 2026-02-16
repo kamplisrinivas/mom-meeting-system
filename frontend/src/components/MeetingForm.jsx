@@ -7,7 +7,7 @@ export default function MeetingForm({ token, refreshMeetings }) {
   const navigate = useNavigate();
   const [meeting, setMeeting] = useState({
     title: "",
-    description: "", // ✅ Properly initialized
+    description: "",
     meeting_date: "",
     meeting_time: "",
     department_id: "",
@@ -54,7 +54,6 @@ export default function MeetingForm({ token, refreshMeetings }) {
     }
   };
 
-  // ✅ FIXED: Proper validation including description
   const validateForm = () => {
     const newErrors = {};
     if (!meeting.title?.trim()) newErrors.title = "Title is required";
@@ -73,21 +72,67 @@ export default function MeetingForm({ token, refreshMeetings }) {
     return Object.keys(newErrors).length === 0;
   };
 
-  const createMeeting = async () => {
+  // ✅ NEW: Send beautiful email notification
+  const sendMeetingNotificationEmail = async (meetingData, meetingId) => {
+    try {
+      const currentUser = users.find(u => u.id == meetingData.created_by) || 
+                         { name: localStorage.getItem("username") || "Admin", email: "admin@company.com" };
+
+      const emailData = {
+        scheduledBy: currentUser.name || "SLRM ADMIN",
+        meeting_datetime: new Date(`${meetingData.meeting_date} ${meetingData.meeting_time || '00:00'}`).toLocaleString('en-IN', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        }),
+        venue: meetingData.meeting_type === 'Online' ? `${meetingData.platform || 'Online Platform'}` : `${meetingData.venue || 'TBA'}`,
+        meetingCustomId: meetingId || `M${Date.now().toString().slice(-6)}`,
+        subject: meetingData.title,
+        agenda: meetingData.description || "No agenda provided.",
+        recipientEmail: currentUser.email || "team@company.com", // Send to creator or team
+      };
+
+      console.log("📧 Sending email notification:", emailData);
+
+      // ✅ Call your existing email endpoint
+      const emailRes = await fetch(`${API_URL}/api/send-meeting-notification`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(emailData)
+      });
+
+      const emailResult = await emailRes.json();
+      console.log("📧 Email sent:", emailResult);
+      
+      return emailResult;
+    } catch (emailErr) {
+      console.error("❌ Email failed:", emailErr);
+      // Don't block UI if email fails
+      return { success: false, message: "Email notification failed (non-critical)" };
+    }
+  };
+
+  // In your MeetingForm createMeeting function - SIMPLIFIED:
+const createMeeting = async () => {
   if (!validateForm()) return;
 
   setLoading(true);
   try {
-    // ✅ FIX 1: Combine date + time for datetime field
     const dateTime = meeting.meeting_date && meeting.meeting_time 
       ? `${meeting.meeting_date} ${meeting.meeting_time}:00`
       : meeting.meeting_date;
 
-    // ✅ FIX 2: Ensure description is always sent (even empty string)
     const payload = {
       title: meeting.title.trim(),
-      description: meeting.description || "", // ✅ This was the issue!
-      meeting_date: dateTime, // ✅ Combined datetime
+      description: meeting.description || "",
+      meeting_date: dateTime,
+      meeting_time: meeting.meeting_time || null,
       department_id: parseInt(meeting.department_id),
       meeting_type: meeting.meeting_type,
       platform: meeting.platform?.trim() || null,
@@ -95,43 +140,32 @@ export default function MeetingForm({ token, refreshMeetings }) {
       created_by: parseInt(meeting.created_by),
     };
 
-    console.log("📤 Sending to API:", payload); // ✅ Debug this!
-
     const res = await fetch(`${API_URL}/api/meetings`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`
       },
-      body: JSON.stringify(payload) // ✅ Proper JSON
+      body: JSON.stringify(payload)
     });
 
     const data = await res.json();
-    console.log("📥 API Response:", data); // ✅ Check this too!
 
-    if (!res.ok) {
-      alert(data.message || "Failed to create meeting");
-      return;
+    if (res.ok) {
+      // ✅ SUCCESS - Your backend already sent emails!
+      setMeeting({
+        title: "", description: "", meeting_date: "", meeting_time: "",
+        department_id: "", meeting_type: "Offline", platform: "", venue: "", created_by: currentUserId
+      });
+      
+      if (refreshMeetings) refreshMeetings();
+      
+      alert(`✅ Meeting created successfully! 📧 ${data.emails_sent_to || 0} emails sent to department`);
+      navigate(-1); // Go back to dashboard
+    } else {
+      alert(data.error || "Failed to create meeting");
     }
-
-    // Reset form
-    setMeeting({
-      title: "",
-      description: "", 
-      meeting_date: "",
-      meeting_time: "",
-      department_id: "",
-      meeting_type: "Offline",
-      platform: "",
-      venue: "",
-      created_by: currentUserId,
-    });
-    
-    if (refreshMeetings) refreshMeetings();
-    alert("✅ Meeting created successfully!");
-    
   } catch (err) {
-    console.error("❌ Error:", err);
     alert("Network error");
   } finally {
     setLoading(false);
@@ -141,7 +175,6 @@ export default function MeetingForm({ token, refreshMeetings }) {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    console.log(`Changing ${name}:`, value); // ✅ Debug log for description
     setMeeting({ ...meeting, [name]: value });
     if (errors[name]) {
       setErrors({ ...errors, [name]: "" });
@@ -267,10 +300,9 @@ export default function MeetingForm({ token, refreshMeetings }) {
           </div>
         )}
 
-        {/* ✅ FIXED DESCRIPTION - Full width, spans entire grid */}
+        {/* Description */}
         <div style={{ ...styles.fieldGroup, gridColumn: "1 / -1" }}>
           <label style={styles.label}>Description</label>
-          {/* ✅ PERFECTLY WORKING TEXTAREA */}
           <textarea
             name="description"
             style={styles.textarea}
@@ -285,12 +317,14 @@ export default function MeetingForm({ token, refreshMeetings }) {
       <div style={styles.actions}>
         <button style={styles.cancelBtn} onClick={() => navigate(-1)} disabled={loading}>Cancel</button>
         <button style={{ ...styles.submitBtn, ...(loading && styles.disabledBtn) }} onClick={createMeeting} disabled={loading}>
-          {loading ? "⏳ Creating..." : "✅ Create Meeting"}
+          {loading ? "⏳ Creating & Sending Email..." : "✅ Create Meeting & Send Email"}
         </button>
       </div>
     </div>
   );
 }
+
+
 
 // ✅ FIXED STYLES - Description textarea works perfectly
 const styles = {

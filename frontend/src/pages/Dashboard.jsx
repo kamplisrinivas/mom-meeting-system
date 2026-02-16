@@ -2,7 +2,9 @@ import React, { useEffect, useState, useCallback, useMemo } from "react";
 import MomPointForm from "../components/MomPointForm";
 
 
+
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001";
+
 
 
 export default function Dashboard() {
@@ -18,11 +20,13 @@ export default function Dashboard() {
   const token = localStorage.getItem("token");
 
 
+
   // Form data for create meeting
   const [formData, setFormData] = useState({
     title: "", description: "", meeting_date: "", meeting_time: "",
     department_id: "", meeting_type: "", platform: "", venue: ""
   });
+
 
 
   // ✅ COMPLETE KPI CALCULATIONS
@@ -45,6 +49,7 @@ export default function Dashboard() {
   }, [meetings, departments]);
 
 
+
   // ✅ ADVANCED FILTERING
   const filteredMeetings = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
@@ -65,11 +70,13 @@ export default function Dashboard() {
       }
 
 
+
       const searchText = searchFilters.searchText.toLowerCase();
       const passesSearch = !searchText || 
         m.title?.toLowerCase().includes(searchText) ||
         m.description?.toLowerCase().includes(searchText) ||
         m.department_name?.toLowerCase().includes(searchText);
+
 
 
       return passesKpi && passesSearch &&
@@ -80,6 +87,7 @@ export default function Dashboard() {
         (!searchFilters.department || m.department_name?.toLowerCase().includes(searchFilters.department.toLowerCase()));
     });
   }, [meetings, activeFilter, searchFilters]);
+
 
 
   const fetchData = useCallback(async () => {
@@ -104,14 +112,17 @@ export default function Dashboard() {
   }, [token]);
 
 
+
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
 
+
   const handleSearchChange = (e) => {
     setSearchFilters(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
+
 
 
   const clearFilters = () => {
@@ -120,10 +131,12 @@ export default function Dashboard() {
   };
 
 
+
   const handleFormChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
+
 
 
   const createMeeting = async () => {
@@ -133,6 +146,7 @@ export default function Dashboard() {
     }
 
 
+
     try {
       setLoading(true);
       const res = await fetch(`${API_URL}/api/meetings`, {
@@ -140,6 +154,7 @@ export default function Dashboard() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(formData),
       });
+
 
 
       if (res.ok) {
@@ -155,13 +170,16 @@ export default function Dashboard() {
   };
 
 
+
   const openMomForm = (meeting) => setSelectedMeeting(meeting);
   const closeMomForm = () => setSelectedMeeting(null);
+
 
 
   if (!token) {
     return <div style={styles.noToken}>Please login to access Dashboard</div>;
   }
+
 
 
   return (
@@ -180,6 +198,7 @@ export default function Dashboard() {
       </div>
 
 
+
       {/* ✅ KPI CARDS */}
       <div style={styles.kpiGrid}>
         <KpiCard title="Total" value={kpiData.total} icon="📊" active={activeFilter === 'all'} onClick={() => setActiveFilter('all')} color="#6366f1" />
@@ -189,6 +208,7 @@ export default function Dashboard() {
         <KpiCard title="Online" value={kpiData.online} icon="💻" active={activeFilter === 'online'} onClick={() => setActiveFilter('online')} color="#8b5cf6" />
         <KpiCard title="Offline" value={kpiData.offline} icon="🏢" active={activeFilter === 'offline'} onClick={() => setActiveFilter('offline')} color="#06b6d4" />
       </div>
+
 
 
       {/* ✅ SEARCH PANEL */}
@@ -208,6 +228,7 @@ export default function Dashboard() {
       </div>
 
 
+
       {/* ✅ CREATE MEETING FORM */}
       {showCreateForm && (
         <CreateMeetingForm 
@@ -221,7 +242,9 @@ export default function Dashboard() {
       )}
 
 
+
      
+
 
 
       {/* ✅ MEETINGS GRID */}
@@ -232,6 +255,7 @@ export default function Dashboard() {
           </h2>
           {loading && <div style={styles.spinner} />}
         </div>
+
 
 
         {filteredMeetings.length === 0 ? (
@@ -246,6 +270,7 @@ export default function Dashboard() {
       </div>
 
 
+
       {/* ✅ MOM POINT MODAL */}
       {selectedMeeting && (
         <MomPointModal meeting={selectedMeeting} token={token} onClose={closeMomForm} />
@@ -255,7 +280,9 @@ export default function Dashboard() {
 }
 
 
+
 // ==================== ALL COMPONENTS ====================
+
 
 
 const KpiCard = ({ title, value, icon, active, onClick, color }) => (
@@ -277,6 +304,7 @@ const KpiCard = ({ title, value, icon, active, onClick, color }) => (
 );
 
 
+
 const SearchInput = ({ name, type = 'text', placeholder, value, onChange }) => (
   <div style={styles.searchField}>
     <input
@@ -291,12 +319,14 @@ const SearchInput = ({ name, type = 'text', placeholder, value, onChange }) => (
 );
 
 
+
 const DepartmentCard = ({ name, count }) => (
   <div style={styles.deptCard}>
     <div style={styles.deptName}>{name}</div>
     <div style={styles.deptCount}>{count}</div>
   </div>
 );
+
 
 
 const MeetingCard = ({ meeting, onClick, token }) => (
@@ -324,6 +354,7 @@ const MeetingCard = ({ meeting, onClick, token }) => (
 );
 
 
+
 const MomPointModal = ({ meeting, token, onClose }) => (
   <div style={styles.modalOverlay} onClick={onClose}>
     <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
@@ -335,6 +366,7 @@ const MomPointModal = ({ meeting, token, onClose }) => (
     </div>
   </div>
 );
+
 
 
 const CreateMeetingForm = ({ formData, departments, onChange, onSubmit, onClose, loading }) => (
@@ -376,12 +408,14 @@ const CreateMeetingForm = ({ formData, departments, onChange, onSubmit, onClose,
 );
 
 
+
 const InputField = ({ label, name, type = 'text', value, onChange, placeholder }) => (
   <div>
     <label style={styles.label}>{label}</label>
     <input name={name} type={type} value={value} onChange={onChange} placeholder={placeholder} style={styles.input} />
   </div>
 );
+
 
 
 const SelectField = ({ label, name, value, onChange, options }) => (
@@ -397,6 +431,7 @@ const SelectField = ({ label, name, value, onChange, options }) => (
 );
 
 
+
 const EmptyState = () => (
   <div style={styles.emptyState}>
     <div style={styles.emptyIcon}>📋</div>
@@ -404,6 +439,7 @@ const EmptyState = () => (
     <p>Try adjusting your filters or create a new meeting</p>
   </div>
 );
+
 
 
 // ==================== COMPLETE STYLES ====================
@@ -735,6 +771,7 @@ const styles = {
 };
 
 
+
 // Add spinner animation
 const styleSheet = document.createElement("style");
 styleSheet.textContent = `
@@ -746,4 +783,4 @@ styleSheet.textContent = `
 if (!document.querySelector('style[data-dashboard]')) {
   styleSheet.setAttribute('data-dashboard', 'true');
   document.head.appendChild(styleSheet);
-} 
+}  
