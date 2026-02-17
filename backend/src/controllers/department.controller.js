@@ -2,17 +2,34 @@ const db = require("../config/db");
 
 exports.getDepartments = async (req, res) => {
   try {
-    const [rows] = await db.query("SELECT * FROM departments ORDER BY name ASC");
-
+    console.log('🔄 Fetching all departments...');
+    
+    const [rows] = await db.execute(`
+      SELECT DISTINCT Department 
+      FROM employees 
+      WHERE Department IS NOT NULL AND Department != ''
+      ORDER BY Department ASC
+    `);
+    
+    const departments = rows.map(row => row.Department).filter(Boolean);
+    
     res.json({
       success: true,
-      data: rows,
+      data: departments,
+      count: departments.length
     });
   } catch (error) {
-    console.error("Department Fetch Error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    console.error('💥 Departments error:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch departments' });
+  }
+};
+
+exports.getDepartmentById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    // Your logic here
+    res.json({ success: true, data: { id, name: "Sample Dept" } });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
   }
 };

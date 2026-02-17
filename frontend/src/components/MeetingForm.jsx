@@ -1,304 +1,234 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001";
 
 export default function MeetingForm({ token, refreshMeetings }) {
   const navigate = useNavigate();
+
   const [meeting, setMeeting] = useState({
     title: "",
     description: "",
     meeting_date: "",
     meeting_time: "",
-    department_id: "",
+    department: "",
     meeting_type: "Offline",
     platform: "",
     venue: "",
     created_by: "",
   });
-  const [users, setUsers] = useState([]);
+
+  const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
-  const [showManualId, setShowManualId] = useState(false);
-
   const currentUserId = localStorage.getItem("userId") || "1";
 
+  // 🔍 DEBUG useEffect
   useEffect(() => {
-    if (!token) return;
-    
-    const fetchUsers = async () => {
-      try {
-        const res = await fetch(`${API_URL}/api/users`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json();
-        if (data.success) {
-          setUsers(data.data || []);
-          const currentUser = data.data.find(user => user.id == currentUserId);
-          if (currentUser) {
-            setMeeting(prev => ({ ...prev, created_by: currentUser.id.toString() }));
-          }
-        }
-      } catch (err) {
-        console.error("Error fetching users:", err);
-      }
-    };
-    
-    fetchUsers();
-  }, [token, currentUserId]);
+    console.log("🔍 Departments state:", departments);
+    console.log("🔍 Departments length:", departments.length);
+  }, [departments]);
 
-  const toggleManualId = () => {
-    setShowManualId(!showManualId);
-    if (!showManualId) {
-      setMeeting(prev => ({ ...prev, created_by: "" }));
+  // ✅ FIXED fetchData with full logging
+  const fetchData = useCallback(async () => {
+    if (!token) {
+      console.log("❌ No token - skipping fetch");
+      return;
     }
-  };
+
+    try {
+      console.log("🔄 Fetching departments...");
+      const deptRes = await fetch(`${API_URL}/api/departments`, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+      });
+      
+      console.log("📡 Response status:", deptRes.status);
+      const deptData = await deptRes.json();
+      console.log("📄 Full response:", deptData);
+      
+      if (deptData.success) {
+        setDepartments(deptData.data || []);
+        console.log("✅ Departments loaded:", deptData.data);
+      } else {
+        console.error("❌ API failed:", deptData);
+        setDepartments([]);
+      }
+    } catch (err) {
+      console.error("❌ Departments error:", err);
+      setDepartments([]);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const validateForm = () => {
     const newErrors = {};
     if (!meeting.title?.trim()) newErrors.title = "Title is required";
     if (!meeting.meeting_date) newErrors.meeting_date = "Date is required";
-    if (!meeting.department_id) newErrors.department_id = "Department is required";
-    if (!meeting.meeting_type) newErrors.meeting_type = "Meeting type is required";
-    if (!meeting.created_by) newErrors.created_by = "Please select or enter Assigned By";
-    
-    if (meeting.meeting_type === "Online" && !meeting.platform?.trim()) {
-      newErrors.platform = "Platform is required";
-    }
-    if (meeting.meeting_type === "Offline" && !meeting.venue?.trim()) {
-      newErrors.venue = "Venue is required";
-    }
+    if (!meeting.department) newErrors.department = "Department is required";
+    if (!meeting.created_by) newErrors.created_by = "Created By required";
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  // ✅ NEW: Send beautiful email notification
-  const sendMeetingNotificationEmail = async (meetingData, meetingId) => {
-    try {
-      const currentUser = users.find(u => u.id == meetingData.created_by) || 
-                         { name: localStorage.getItem("username") || "Admin", email: "admin@company.com" };
+  const createMeeting = async () => {
+    if (!validateForm()) return;
 
-      const emailData = {
-        scheduledBy: currentUser.name || "SLRM ADMIN",
-        meeting_datetime: new Date(`${meetingData.meeting_date} ${meetingData.meeting_time || '00:00'}`).toLocaleString('en-IN', {
-          weekday: 'long',
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        }),
-        venue: meetingData.meeting_type === 'Online' ? `${meetingData.platform || 'Online Platform'}` : `${meetingData.venue || 'TBA'}`,
-        meetingCustomId: meetingId || `M${Date.now().toString().slice(-6)}`,
-        subject: meetingData.title,
-        agenda: meetingData.description || "No agenda provided.",
-        recipientEmail: currentUser.email || "team@company.com", // Send to creator or team
+    setLoading(true);
+    try {
+      const payload = {
+        title: meeting.title,
+        description: meeting.description,
+        meeting_date: meeting.meeting_date,
+        meeting_time: meeting.meeting_time,
+        department: meeting.department,
+        meeting_type: meeting.meeting_type,
+        platform: meeting.platform,
+        venue: meeting.venue,
+        created_by: parseInt(meeting.created_by),
       };
 
-      console.log("📧 Sending email notification:", emailData);
-
-      // ✅ Call your existing email endpoint
-      const emailRes = await fetch(`${API_URL}/api/send-meeting-notification`, {
+      const res = await fetch(`${API_URL}/api/meetings`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(emailData)
+        body: JSON.stringify(payload),
       });
 
-      const emailResult = await emailRes.json();
-      console.log("📧 Email sent:", emailResult);
-      
-      return emailResult;
-    } catch (emailErr) {
-      console.error("❌ Email failed:", emailErr);
-      // Don't block UI if email fails
-      return { success: false, message: "Email notification failed (non-critical)" };
+      const data = await res.json();
+
+      if (res.ok) {
+        alert(`✅ Meeting created! ID: ${data.meetingId}`);
+        if (refreshMeetings) refreshMeetings();
+        navigate(-1);
+      } else {
+        alert(data.message || "Failed to create meeting");
+      }
+    } catch (err) {
+      alert("Network error");
+    } finally {
+      setLoading(false);
     }
   };
-
-  // In your MeetingForm createMeeting function - SIMPLIFIED:
-const createMeeting = async () => {
-  if (!validateForm()) return;
-
-  setLoading(true);
-  try {
-    const dateTime = meeting.meeting_date && meeting.meeting_time 
-      ? `${meeting.meeting_date} ${meeting.meeting_time}:00`
-      : meeting.meeting_date;
-
-    const payload = {
-      title: meeting.title.trim(),
-      description: meeting.description || "",
-      meeting_date: dateTime,
-      meeting_time: meeting.meeting_time || null,
-      department_id: parseInt(meeting.department_id),
-      meeting_type: meeting.meeting_type,
-      platform: meeting.platform?.trim() || null,
-      venue: meeting.venue?.trim() || null,
-      created_by: parseInt(meeting.created_by),
-    };
-
-    const res = await fetch(`${API_URL}/api/meetings`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify(payload)
-    });
-
-    const data = await res.json();
-
-    if (res.ok) {
-      // ✅ SUCCESS - Your backend already sent emails!
-      setMeeting({
-        title: "", description: "", meeting_date: "", meeting_time: "",
-        department_id: "", meeting_type: "Offline", platform: "", venue: "", created_by: currentUserId
-      });
-      
-      if (refreshMeetings) refreshMeetings();
-      
-      alert(`✅ Meeting created successfully! 📧 ${data.emails_sent_to || 0} emails sent to department`);
-      navigate(-1); // Go back to dashboard
-    } else {
-      alert(data.error || "Failed to create meeting");
-    }
-  } catch (err) {
-    alert("Network error");
-  } finally {
-    setLoading(false);
-  }
-};
-
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setMeeting({ ...meeting, [name]: value });
-    if (errors[name]) {
-      setErrors({ ...errors, [name]: "" });
-    }
-  };
-
-  const getUserDisplayName = (userId) => {
-    const user = users.find(u => u.id == userId);
-    return user ? `${user.name || user.username} (${user.email})` : `User ID: ${userId}`;
+    setMeeting({ ...meeting, [e.target.name]: e.target.value });
   };
 
   return (
     <div style={styles.container}>
-      <div style={styles.header}>
-        <h3 style={styles.title}>📋 Create New Meeting</h3>
-        <button style={styles.closeBtn} onClick={() => navigate(-1)}>×</button>
+      {/* 🔍 DEBUG DISPLAY - Remove after testing */}
+      <div style={styles.debugBox}>
+        DEBUG: {departments.length} departments - {departments.join(', ')}
       </div>
-
+      
+      <h3 style={styles.title}>📋 Create New Meeting</h3>
+      
       <div style={styles.formGrid}>
         {/* Title */}
         <div style={styles.fieldGroup}>
-          <label style={styles.label}>Meeting Title <span style={styles.required}>*</span></label>
+          <label style={styles.label}>Meeting Title <span style={styles.required}> *</span></label>
           <input
             name="title"
-            style={{ ...styles.input, ...(errors.title && styles.inputError) }}
-            placeholder="Enter meeting title"
+            style={styles.input}
             value={meeting.title}
             onChange={handleChange}
+            placeholder="Weekly Sprint Review"
           />
           {errors.title && <span style={styles.error}>{errors.title}</span>}
         </div>
 
-        {/* Date & Time */}
+        {/* Date */}
         <div style={styles.fieldGroup}>
-          <label style={styles.label}>Date <span style={styles.required}>*</span></label>
+          <label style={styles.label}>Date <span style={styles.required}> *</span></label>
           <input
-            name="meeting_date"
             type="date"
-            style={{ ...styles.input, ...(errors.meeting_date && styles.inputError) }}
+            name="meeting_date"
+            style={styles.input}
             value={meeting.meeting_date}
             onChange={handleChange}
           />
+          {errors.meeting_date && <span style={styles.error}>{errors.meeting_date}</span>}
         </div>
 
+        {/* Time */}
         <div style={styles.fieldGroup}>
           <label style={styles.label}>Time</label>
           <input
-            name="meeting_time"
             type="time"
+            name="meeting_time"
             style={styles.input}
             value={meeting.meeting_time}
             onChange={handleChange}
           />
         </div>
 
-        {/* Department */}
+        {/* ✅ FIXED Department Dropdown */}
         <div style={styles.fieldGroup}>
-          <label style={styles.label}>Department <span style={styles.required}>*</span></label>
-          <select name="department_id" style={{ ...styles.input, ...(errors.department_id && styles.inputError) }} value={meeting.department_id} onChange={handleChange}>
+          <label style={styles.label}>Department <span style={styles.required}> *</span></label>
+          <select
+            name="department"
+            style={styles.selectInput}  
+            value={meeting.department}
+            onChange={handleChange}
+          >
             <option value="">Select Department</option>
-            <option value={1}>HR Department</option>
-            <option value={2}>Engineering</option>
-            <option value={3}>Sales</option>
-            <option value={4}>Marketing</option>
+            {departments.length > 0 ? (
+              departments.map((dept, index) => (
+                <option key={index} value={dept}>
+                  {dept}
+                </option>
+              ))
+            ) : (
+              <option disabled>No departments available</option>
+            )}
           </select>
+          {errors.department && <span style={styles.error}>{errors.department}</span>}
         </div>
 
-        {/* Assigned By */}
+        {/* Created By */}
         <div style={styles.fieldGroup}>
-          <label style={styles.label}>Assigned By <span style={styles.required}>*</span></label>
-          {!showManualId ? (
-            <div style={styles.assignedByContainer}>
-              <select name="created_by" style={{ ...styles.input, flex: 1, ...(errors.created_by && styles.inputError) }} value={meeting.created_by} onChange={handleChange}>
-                <option value="">Select User</option>
-                {users.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.name || user.username} ({user.email})
-                  </option>
-                ))}
-                <option value={currentUserId}>💼 Me (ID: {currentUserId})</option>
-                <option value="manual">➕ Enter Custom ID</option>
-              </select>
-              <button type="button" style={styles.manualIdToggle} onClick={toggleManualId}>ID#</button>
-            </div>
-          ) : (
-            <>
-              <input
-                name="created_by"
-                type="number"
-                style={{ ...styles.input, ...(errors.created_by && styles.inputError) }}
-                placeholder="Enter User ID"
-                value={meeting.created_by}
-                onChange={handleChange}
-              />
-              <span style={styles.manualIdPreview}>Preview: {getUserDisplayName(meeting.created_by)}</span>
-              <button type="button" style={styles.backToDropdown} onClick={toggleManualId}>← Back</button>
-            </>
-          )}
+          <label style={styles.label}>Created By <span style={styles.required}> *</span></label>
+          <select
+            name="created_by"
+            style={styles.selectInput}
+            value={meeting.created_by}
+            onChange={handleChange}
+          >
+            <option value="">Select Creator</option>
+            <option value={currentUserId}>Current User (ID: {currentUserId})</option>
+          </select>
           {errors.created_by && <span style={styles.error}>{errors.created_by}</span>}
         </div>
 
         {/* Meeting Type */}
         <div style={styles.fieldGroup}>
-          <label style={styles.label}>Meeting Type <span style={styles.required}>*</span></label>
-          <select name="meeting_type" style={{ ...styles.input, ...(errors.meeting_type && styles.inputError) }} value={meeting.meeting_type} onChange={handleChange}>
-            <option value="">Select Type</option>
-            <option value="Offline">🏢 Offline</option>
-            <option value="Online">💻 Online</option>
+          <label style={styles.label}>Meeting Type</label>
+          <select name="meeting_type" style={styles.selectInput} value={meeting.meeting_type} onChange={handleChange}>
+            <option value="Offline">Offline</option>
+            <option value="Online">Online</option>
           </select>
         </div>
 
-        {/* Platform/Venue */}
-        {meeting.meeting_type === "Online" && (
-          <div style={styles.fieldGroup}>
-            <label style={styles.label}>Platform <span style={styles.required}>*</span></label>
-            <input name="platform" style={{ ...styles.input, ...(errors.platform && styles.inputError) }} placeholder="Zoom, Teams" value={meeting.platform} onChange={handleChange} />
-          </div>
-        )}
-        {meeting.meeting_type === "Offline" && (
-          <div style={styles.fieldGroup}>
-            <label style={styles.label}>Venue <span style={styles.required}>*</span></label>
-            <input name="venue" style={{ ...styles.input, ...(errors.venue && styles.inputError) }} placeholder="Room A" value={meeting.venue} onChange={handleChange} />
-          </div>
-        )}
+        {/* Venue/Platform */}
+        <div style={styles.fieldGroup}>
+          <label style={styles.label}>Venue/Platform</label>
+          <input
+            name="venue"
+            style={styles.input}
+            value={meeting.venue}
+            onChange={handleChange}
+            placeholder="Conference Room A1 / Zoom Link"
+          />
+        </div>
 
         {/* Description */}
         <div style={{ ...styles.fieldGroup, gridColumn: "1 / -1" }}>
@@ -306,160 +236,107 @@ const createMeeting = async () => {
           <textarea
             name="description"
             style={styles.textarea}
-            placeholder="Type your meeting description here... (optional)"
             value={meeting.description}
             onChange={handleChange}
+            placeholder="Meeting agenda, discussion points..."
             rows={4}
           />
         </div>
       </div>
 
-      <div style={styles.actions}>
-        <button style={styles.cancelBtn} onClick={() => navigate(-1)} disabled={loading}>Cancel</button>
-        <button style={{ ...styles.submitBtn, ...(loading && styles.disabledBtn) }} onClick={createMeeting} disabled={loading}>
-          {loading ? "⏳ Creating & Sending Email..." : "✅ Create Meeting & Send Email"}
-        </button>
-      </div>
+      <button style={styles.submitBtn} onClick={createMeeting} disabled={loading}>
+        {loading ? "⏳ Creating..." : "✅ Create Meeting"}
+      </button>
     </div>
   );
 }
 
-
-
-// ✅ FIXED STYLES - Description textarea works perfectly
+// ✅ FIXED STYLES - Departments will show!
 const styles = {
-  container: {
-    background: "rgba(255, 255, 255, 0.95)",
-    backdropFilter: "blur(20px)",
-    padding: "2rem",
-    borderRadius: "24px",
-    boxShadow: "0 20px 60px rgba(0, 0, 0, 0.15)",
-    maxWidth: "700px",
+  container: { 
+    padding: "2rem", 
+    maxWidth: "900px", 
     margin: "0 auto",
+    background: "white",
+    borderRadius: "20px",
+    boxShadow: "0 10px 40px rgba(0,0,0,0.1)"
   },
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: "2rem",
-    paddingBottom: "1rem",
-    borderBottom: "2px solid #f0f0f0",
-  },
-  title: { margin: 0, fontSize: "1.8rem", fontWeight: "700", color: "#1a1a1a" },
-  closeBtn: {
-    background: "none",
-    border: "none",
-    fontSize: "2rem",
-    cursor: "pointer",
-    color: "#666",
-    padding: "0.5rem",
+  debugBox: {
+    padding: "10px",
+    background: "#e7f3ff",
+    border: "1px solid #b3d9ff",
     borderRadius: "8px",
+    marginBottom: "20px",
+    fontFamily: "monospace",
+    fontSize: "14px",
+    color: "#1e40af"
   },
-  formGrid: {
-    display: "grid",
+  title: { 
+    marginBottom: "2rem", 
+    fontSize: "28px", 
+    fontWeight: "700", 
+    color: "#1a1a2e",
+    textAlign: "center"
+  },
+  formGrid: { 
+    display: "grid", 
     gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-    gap: "1.5rem",
-    marginBottom: "2rem",
+    gap: "1.5rem", 
+    marginBottom: "2rem" 
   },
-  fieldGroup: {
-    display: "flex",
-    flexDirection: "column",
-  },
-  label: {
-    fontWeight: "600",
-    color: "#333",
-    marginBottom: "0.5rem",
-    fontSize: "0.95rem",
-  },
-  required: { color: "#e74c3c", fontSize: "0.9rem" },
-  input: {
-    padding: "14px 16px",
-    border: "2px solid #e1e5e9",
-    borderRadius: "12px",
-    fontSize: "1rem",
+  fieldGroup: { display: "flex", flexDirection: "column", gap: "0.5rem" },
+  label: { fontWeight: "600", color: "#374151", fontSize: "14px" },
+  
+  // ✅ FIXED SELECT INPUT
+  selectInput: { 
+    padding: "12px 16px", 
+    border: "2px solid #e2e8f0", 
+    borderRadius: "10px", 
+    fontSize: "16px",
     background: "#fafbfc",
-    transition: "all 0.3s ease",
-  },
-  inputError: {
-    borderColor: "#e74c3c",
-    boxShadow: "0 0 0 3px rgba(231, 76, 60, 0.1)",
-  },
-  // ✅ FIXED TEXTAREA STYLE - Works perfectly now
-  textarea: {
-    padding: "14px 16px",
-    border: "2px solid #e1e5e9",
-    borderRadius: "12px",
-    fontSize: "1rem",
-    background: "#fafbfc",
-    transition: "all 0.3s ease",
-    fontFamily: "inherit",
-    lineHeight: "1.6",
-    resize: "vertical",
+    minHeight: "44px",
     width: "100%",
     boxSizing: "border-box",
+    appearance: "menulist",
+    WebkitAppearance: "menulist",
+    cursor: "pointer"
   },
-  error: {
-    color: "#e74c3c",
-    fontSize: "0.85rem",
-    marginTop: "0.25rem",
+  
+  // Regular inputs
+  input: { 
+    padding: "12px 16px", 
+    border: "2px solid #e2e8f0", 
+    borderRadius: "10px", 
+    fontSize: "16px",
+    background: "#fafbfc",
+    minHeight: "44px",
+    width: "100%",
+    boxSizing: "border-box"
   },
-  assignedByContainer: {
-    display: "flex",
-    gap: "0.5rem",
+  textarea: {
+    padding: "12px 16px", 
+    border: "2px solid #e2e8f0", 
+    borderRadius: "10px", 
+    fontSize: "16px",
+    background: "#fafbfc",
+    minHeight: "100px",
+    resize: "vertical",
+    fontFamily: "inherit",
+    width: "100%",
+    boxSizing: "border-box"
   },
-  manualIdToggle: {
-    padding: "14px 16px",
-    background: "#e3f2fd",
-    color: "#1976d2",
-    border: "2px solid #bbdefb",
-    borderRadius: "12px",
-    cursor: "pointer",
-    fontSize: "0.9rem",
-    fontWeight: "600",
-  },
-  manualIdPreview: {
-    fontSize: "0.85rem",
-    color: "#666",
-    fontStyle: "italic",
-    marginTop: "0.25rem",
-  },
-  backToDropdown: {
-    padding: "8px 16px",
-    background: "#f8f9fa",
-    color: "#666",
-    border: "1px solid #e1e5e9",
-    borderRadius: "8px",
-    cursor: "pointer",
-    fontSize: "0.9rem",
-    marginTop: "0.5rem",
-  },
-  actions: {
-    display: "flex",
-    gap: "1rem",
-    justifyContent: "flex-end",
-  },
-  cancelBtn: {
-    padding: "14px 24px",
-    background: "#f8f9fa",
-    color: "#666",
-    border: "2px solid #e1e5e9",
-    borderRadius: "12px",
-    cursor: "pointer",
-    fontSize: "1rem",
-    fontWeight: "600",
-  },
+  required: { color: "#ef4444" },
+  error: { color: "#ef4444", fontSize: "12px", marginTop: "0.25rem" },
   submitBtn: {
-    padding: "14px 28px",
-    background: "linear-gradient(135deg, #667eea, #764ba2)",
-    color: "white",
+    width: "100%",
+    padding: "16px 32px",
+    background: "linear-gradient(135deg, #8B0000, #A52A2A)",
+    color: "#fff",
     border: "none",
     borderRadius: "12px",
+    fontSize: "16px",
+    fontWeight: "600",
     cursor: "pointer",
-    fontSize: "1rem",
-    fontWeight: "700",
-  },
-  disabledBtn: {
-    opacity: 0.7,
-    cursor: "not-allowed",
+    transition: "all 0.3s ease"
   },
 };

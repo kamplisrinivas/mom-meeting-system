@@ -16,7 +16,7 @@ app.use(express.json());
 const departmentRoutes = require("./routes/department.routes");
 app.use("/api/departments", departmentRoutes);
 
-const employeeRoutes = require("./routes/employees");
+const employeeRoutes = require("./routes/employee.routes");
 app.use("/api/employees", employeeRoutes);
 
 const authRoutes = require("./routes/auth.routes");
@@ -33,6 +33,7 @@ app.use("/api/actions", actionRoutes);
 
 const dashboardRoutes = require("./routes/dashboard.routes");
 app.use("/api/dashboard", dashboardRoutes);
+
 
 /* ================= TEST ROUTES ================= */
 
