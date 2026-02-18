@@ -132,9 +132,7 @@ export default function MeetingForm({ token, refreshMeetings }) {
   return (
     <div style={styles.container}>
       {/* 🔍 DEBUG DISPLAY - Remove after testing */}
-      <div style={styles.debugBox}>
-        DEBUG: {departments.length} departments - {departments.join(', ')}
-      </div>
+     
       
       <h3 style={styles.title}>📋 Create New Meeting</h3>
       

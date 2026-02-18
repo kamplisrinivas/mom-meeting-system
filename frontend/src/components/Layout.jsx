@@ -27,11 +27,11 @@ const Layout = ({ onLogout }) => {
         {/* SIDEBAR */}
         <aside style={styles.sidebar}>
           <nav style={styles.nav}>
-            <SidebarLink to="/dashboard" label="📊 Dashboard" icon="📊" />
-            <SidebarLink to="/meetings/create" label="➕ Create Meeting" icon="➕" />
-            <SidebarLink to="/meetings" label="📋 All Meetings" icon="📋" />
-            <SidebarLink to="/employee-tasks" label="🎯 My Tasks" icon="🎯" />  {/* 👈 FIXED PATH */}
-            <SidebarLink to="/reports" label="📈 Reports" icon="📈" disabled />
+            <SidebarLink to="/dashboard" label=" Dashboard" icon="📊" />
+            <SidebarLink to="/meetings/create" label=" Create Meeting" icon="➕" />
+            <SidebarLink to="/meetings" label=" All Meetings" icon="📋" />
+            <SidebarLink to="/employee-tasks" label=" My Tasks" icon="🎯" />  {/* 👈 FIXED PATH */}
+            <SidebarLink to="/reports" label=" Reports" icon="📈" disabled />
           </nav>
         </aside>
 

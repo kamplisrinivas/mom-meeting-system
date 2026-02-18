@@ -9,14 +9,11 @@ import {
 } from "react-router-dom";
 import MomPointForm from "./components/MomPointForm";
 import EmployeeDashboard from "./pages/EmployeeDashboard";
-import { login } from "./api";
-
 import LoginPage from "./pages/LoginPage";
 import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
 import MeetingForm from "./components/MeetingForm";
 
-// ✅ SHARED PAGE STYLES (Fix undefined error)
 const pageStyles = {
   backBtn: {
     background: 'linear-gradient(135deg, #64748b, #475569)',
@@ -37,6 +34,10 @@ function App() {
     const savedToken = localStorage.getItem("token");
     if (savedToken) {
       setToken(savedToken);
+      const savedRole = localStorage.getItem("userRole");
+      if (savedRole) {
+        setUser({ role: savedRole });
+      }
     }
   }, []);
 
@@ -44,19 +45,20 @@ function App() {
     setToken(newToken);
     setUser(newUser);
     localStorage.setItem("token", newToken);
+    localStorage.setItem("userRole", newUser?.role);
     
-    // ✅ AUTO-REDIRECT EMPLOYEES TO TASKS
-    if (newUser?.role === "employee") {
-      setTimeout(() => window.location.href = "/employee-tasks", 100);
-    }
+     // ✅ EMPLOYEE → Employee Dashboard ONLY
+    window.location.href = "/employee-tasks";
   };
 
   const handleLogout = () => {
     setToken("");
     setUser(null);
-    localStorage.removeItem("token");
+    localStorage.clear();
+    window.location.href = "/login";
   };
 
+  // ✅ FIXED: Simple token check only
   const ProtectedRoute = ({ children }) => {
     if (!token) {
       return <Navigate to="/login" replace />;
@@ -64,7 +66,22 @@ function App() {
     return children;
   };
 
-  // ✅ MomPointFormPage wrapper
+
+  // ✅ Role-Based Layout Wrapper
+  const RoleBasedLayout = ({ children }) => {
+    const userRole = localStorage.getItem("userRole");
+    
+    return (
+      <Layout onLogout={handleLogout}>
+        {userRole === "Admin" ? (
+          children  // Admin sees full dashboard
+        ) : (
+          <Navigate to="/employee-tasks" replace />  // Employee ONLY sees EmployeeDashboard
+        )}
+      </Layout>
+    );
+  };
+
   const MomPointFormPage = () => {
     const { meetingId } = useParams();
     const token = localStorage.getItem("token");
@@ -90,7 +107,6 @@ function App() {
     );
   };
 
-  // ✅ MeetingFormPage wrapper
   const MeetingFormPage = () => {
     const navigate = useNavigate();
     
@@ -115,7 +131,6 @@ function App() {
     );
   };
 
-  // ✅ AllMeetings component
   const AllMeetings = () => {
     const [meetings, setMeetings] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -228,6 +243,7 @@ function App() {
         width: '24px',
         height: '24px',
         border: '3px solid #e2e8f0',
+
         borderTop: '3px solid #667eea',
         borderRadius: '50%',
         animation: 'spin 1s linear infinite',
