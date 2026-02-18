@@ -13,8 +13,9 @@ app.use(express.json());
 
 /* ================= ROUTES ================= */
 
-const departmentRoutes = require("./routes/department.routes");
-app.use("/api/departments", departmentRoutes);
+const departmentRoutes = require("./routes/department.routes");  // ← CORRECT IMPORT
+app.use('/api/departments',  departmentRoutes);  // ✅ CORRECT VARIABLE
+
 
 const employeeRoutes = require("./routes/employee.routes");
 app.use("/api/employees", employeeRoutes);

@@ -1,8 +1,7 @@
 const express = require("express");
 const router = express.Router();
-const db = require("../config/db"); // Your MySQL connection
+const db = require("../config/db");
 
-// ✅ REAL DEPARTMENTS FROM employees TABLE
 router.get("/", async (req, res) => {
   try {
     console.log('🔄 Fetching departments from employees table...');

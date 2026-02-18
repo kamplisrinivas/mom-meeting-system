@@ -31,36 +31,42 @@ export default function MeetingForm({ token, refreshMeetings }) {
 
   // ✅ FIXED fetchData with full logging
   const fetchData = useCallback(async () => {
-    if (!token) {
-      console.log("❌ No token - skipping fetch");
-      return;
-    }
+  // 🔥 AUTO-GET TOKEN FROM LOCALSTORAGE
+  const localToken = localStorage.getItem('token') || localStorage.getItem('authToken');
+  console.log("🔍 LOCAL TOKEN FOUND:", !!localToken);
+  
+  if (!localToken) {
+    console.log("⚠️ No token - fetching without auth");
+    // TRY WITHOUT TOKEN ANYWAY
+  }
 
-    try {
-      console.log("🔄 Fetching departments...");
-      const deptRes = await fetch(`${API_URL}/api/departments`, {
-        headers: { 
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-      });
-      
-      console.log("📡 Response status:", deptRes.status);
-      const deptData = await deptRes.json();
-      console.log("📄 Full response:", deptData);
-      
-      if (deptData.success) {
-        setDepartments(deptData.data || []);
-        console.log("✅ Departments loaded:", deptData.data);
-      } else {
-        console.error("❌ API failed:", deptData);
-        setDepartments([]);
-      }
-    } catch (err) {
-      console.error("❌ Departments error:", err);
+  try {
+    console.log("🔄 Fetching departments...");
+    const deptRes = await fetch(`${API_URL}/api/departments`, {
+      headers: { 
+        'Content-Type': 'application/json',
+        // ONLY ADD TOKEN IF EXISTS
+        ...(localToken && { Authorization: `Bearer ${localToken}` })
+      },
+    });
+    
+    console.log("📡 Response status:", deptRes.status);
+    const deptData = await deptRes.json();
+    console.log("📄 Full response:", deptData);
+    
+    if (deptData.success) {
+      setDepartments(deptData.data || []);
+      console.log("✅ Departments loaded:", deptData.data);
+    } else {
+      console.error("❌ API failed:", deptData);
       setDepartments([]);
     }
-  }, [token]);
+  } catch (err) {
+    console.error("❌ Departments error:", err);
+    setDepartments([]);
+  }
+}, []);
+
 
   useEffect(() => {
     fetchData();

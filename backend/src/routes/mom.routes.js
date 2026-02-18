@@ -15,4 +15,10 @@ router.put("/:id", authMiddleware, momController.updateMomPoint);
 // ✅ Delete a MOM point by ID
 router.delete("/:id", authMiddleware, momController.deleteMomPoint);
 
+// ✅ NEW: Get MY assigned tasks (Employee Dashboard)
+router.get("/my-tasks", authMiddleware, momController.getMyTasks);
+
+// ✅ NEW: Update task status only (Employee status buttons)
+router.put("/:id/status", authMiddleware, momController.updateStatus);
+
 module.exports = router;

@@ -185,7 +185,37 @@ const styles = {
     cursor: "pointer",
     fontSize: "12px"
   },
-  required: { color: "#ef4444" }
+  required: { color: "#ef4444" },
+
+  
+  // ✅ NEW STATUS BUTTON STYLES
+  statusButtons: {
+    display: "flex",
+    gap: "8px",
+    flexWrap: "wrap",
+  },
+  statusBtn: {
+    padding: "8px 16px",
+    border: "2px solid #e2e8f0",
+    borderRadius: "10px",
+    background: "white",
+    color: "#64748b",
+    fontWeight: "600",
+    fontSize: "13px",
+    cursor: "pointer",
+    transition: "all 0.2s ease",
+    whiteSpace: "nowrap",
+  },
+  statusBtnActive: {
+    background: "linear-gradient(135deg, #10b981, #059669)",
+    color: "white",
+    borderColor: "#10b981",
+    boxShadow: "0 4px 12px rgba(16, 185, 129, 0.3)",
+  },
+  statusBtnDisabled: {
+    opacity: 0.5,
+    cursor: "not-allowed",
+  },
 };
 
 export default function MomPointForm({ meetingId, token }) {
@@ -206,13 +236,10 @@ export default function MomPointForm({ meetingId, token }) {
     status: "Assigned"
   });
 
-  // ✅ PERFECTLY FIXED fetchEmployees
+  // ✅ ALL YOUR EXISTING FUNCTIONS (unchanged)
   const fetchEmployees = useCallback(async () => {
     console.log("🔄 Fetching employees...", !!token);
-    if (!token) {
-      console.log("❌ No token");
-      return;
-    }
+    if (!token) return;
     
     setEmployeeLoading(true);
     try {
@@ -220,20 +247,12 @@ export default function MomPointForm({ meetingId, token }) {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      console.log("📡 Status:", res.status);
-      
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
-      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       
       const data = await res.json();
-      console.log("📋 Employees data:", data);
-      
       if (data.success && Array.isArray(data.data)) {
         setEmployees(data.data);
-        console.log("✅ LOADED:", data.data.length, "employees");
       } else {
-        console.log("⚠️ No success/data format");
         setEmployees([]);
       }
     } catch (err) {
@@ -259,16 +278,33 @@ export default function MomPointForm({ meetingId, token }) {
     }
   }, [meetingId, token]);
 
-  // ✅ PERFECTLY FIXED useEffect - NO INFINITE LOOP
+  // ✅ NEW: Update status function (for Admin tracking)
+  const updateStatus = async (pointId, newStatus) => {
+    try {
+      const res = await fetch(`${API_URL}/api/mom/${pointId}/status`, {
+        method: "PUT",
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
+
+      if (res.ok) {
+        fetchMomPoints(); // Refresh list
+        console.log(`✅ Status updated to ${newStatus}`);
+      } else {
+        console.error("Status update failed");
+      }
+    } catch (err) {
+      console.error("Status update error:", err);
+    }
+  };
+
   useEffect(() => {
-    console.log("🚀 Component mount - token:", !!token, "meetingId:", meetingId);
-    if (token) {
-      fetchEmployees();
-    }
-    if (meetingId && token) {
-      fetchMomPoints();
-    }
-  }, [token, meetingId]); // ✅ ONLY PROPS IN DEPENDENCIES
+    if (token) fetchEmployees();
+    if (meetingId && token) fetchMomPoints();
+  }, [token, meetingId, fetchEmployees, fetchMomPoints]);
 
   const employeeOptions = employees.map(employee => ({
     value: employee.EmployeeID,
@@ -292,6 +328,7 @@ export default function MomPointForm({ meetingId, token }) {
     return colors[status] || colors.Assigned;
   };
 
+  // ✅ ALL YOUR OTHER FUNCTIONS (handleSave, handleEdit, handleDelete - unchanged)
   const handleSave = async () => {
     if (!formData.topic.trim() || !formData.point.trim() || !formData.assigned_to.length) {
       return setError("Please fill all required fields");
@@ -320,9 +357,7 @@ export default function MomPointForm({ meetingId, token }) {
       });
       
       if (res.ok) {
-        setFormData({ 
-          topic: "", point: "", decisions: "", assigned_to: [], timeline: "", status: "Assigned" 
-        });
+        setFormData({ topic: "", point: "", decisions: "", assigned_to: [], timeline: "", status: "Assigned" });
         setIsAdding(false); 
         setEditingId(null);
         fetchMomPoints();
@@ -386,87 +421,52 @@ export default function MomPointForm({ meetingId, token }) {
           </div>
         )}
 
-        {/* ADD/EDIT FORM */}
+        {/* FORM - UNCHANGED */}
         {isAdding && (
           <div style={styles.formContainer}>
-            <div style={{ 
-              display: "flex", 
-              justifyContent: "space-between", 
-              alignItems: "center", 
-              marginBottom: "24px" 
-            }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
               <h2 style={styles.formTitle}>
                 {editingId ? "✏️ Edit Action Item" : "➕ New Action Item"}
               </h2>
               <div style={styles.formActions}>
-                <button 
-                  style={styles.secondaryBtn} 
-                  onClick={() => {setIsAdding(false); setEditingId(null);}} 
-                  disabled={loading}
-                >
+                <button style={styles.secondaryBtn} onClick={() => {setIsAdding(false); setEditingId(null);}} disabled={loading}>
                   Cancel
                 </button>
-                <button 
-                  style={styles.primaryBtn} 
-                  onClick={handleSave} 
-                  disabled={loading}
-                >
+                <button style={styles.primaryBtn} onClick={handleSave} disabled={loading}>
                   {loading ? "⏳ Saving..." : editingId ? "Update" : "Create"}
                 </button>
               </div>
             </div>
 
+            {/* FORM FIELDS - UNCHANGED */}
             <div style={styles.formGrid}>
               <div style={styles.formGroup}>
-                <label style={styles.formLabel}>
-                  Topic <span style={styles.required}>*</span>
-                </label>
-                <input 
-                  style={styles.input} 
-                  value={formData.topic} 
-                  onChange={e => setFormData({...formData, topic: e.target.value})} 
-                  placeholder="Discussion topic"
-                />
+                <label style={styles.formLabel}>Topic <span style={styles.required}>*</span></label>
+                <input style={styles.input} value={formData.topic} onChange={e => setFormData({...formData, topic: e.target.value})} placeholder="Discussion topic" />
               </div>
               
               <div style={styles.formGroup}>
-                <label style={styles.formLabel}>
-                  Assignees <span style={styles.required}>*</span>
-                </label>
+                <label style={styles.formLabel}>Assignees <span style={styles.required}>*</span></label>
                 <Select 
                   isMulti 
                   options={employeeOptions}
                   value={employeeOptions.filter(opt => formData.assigned_to.includes(opt.value))}
-                  onChange={selected => setFormData({
-                    ...formData, 
-                    assigned_to: selected ? selected.map(s => s.value) : []
-                  })}
+                  onChange={selected => setFormData({...formData, assigned_to: selected ? selected.map(s => s.value) : []})}
                   placeholder={employeeLoading ? "Loading employees..." : "Select team members"}
                   isLoading={employeeLoading}
                   styles={styles.selectStyles}
                 />
-                <small style={{color: "#9ca3af", fontSize: "11px"}}>
-                  {employees.length} employees loaded
-                </small>
+                <small style={{color: "#9ca3af", fontSize: "11px"}}>{employees.length} employees loaded</small>
               </div>
 
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Due Date</label>
-                <input 
-                  type="date" 
-                  style={styles.input} 
-                  value={formData.timeline} 
-                  onChange={e => setFormData({...formData, timeline: e.target.value})} 
-                />
+                <input type="date" style={styles.input} value={formData.timeline} onChange={e => setFormData({...formData, timeline: e.target.value})} />
               </div>
 
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Status</label>
-                <select 
-                  style={styles.input} 
-                  value={formData.status} 
-                  onChange={e => setFormData({...formData, status: e.target.value})}
-                >
+                <select style={styles.input} value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}>
                   <option>Assigned</option>
                   <option>In Progress</option>
                   <option>Completed</option>
@@ -476,32 +476,18 @@ export default function MomPointForm({ meetingId, token }) {
             </div>
 
             <div style={styles.formGroup}>
-              <label style={styles.formLabel}>
-                Discussion Points <span style={styles.required}>*</span>
-              </label>
-              <textarea 
-                style={styles.textarea} 
-                value={formData.point} 
-                onChange={e => setFormData({...formData, point: e.target.value})} 
-                placeholder="What was discussed in detail?"
-                rows={4}
-              />
+              <label style={styles.formLabel}>Discussion Points <span style={styles.required}>*</span></label>
+              <textarea style={styles.textarea} value={formData.point} onChange={e => setFormData({...formData, point: e.target.value})} placeholder="What was discussed in detail?" rows={4} />
             </div>
 
             <div style={styles.formGroup}>
               <label style={styles.formLabel}>Decisions</label>
-              <textarea 
-                style={styles.textarea} 
-                value={formData.decisions} 
-                onChange={e => setFormData({...formData, decisions: e.target.value})} 
-                placeholder="Final decisions & resolutions"
-                rows={3}
-              />
+              <textarea style={styles.textarea} value={formData.decisions} onChange={e => setFormData({...formData, decisions: e.target.value})} placeholder="Final decisions & resolutions" rows={3} />
             </div>
           </div>
         )}
 
-        {/* ACTION ITEMS LIST */}
+        {/* ✅ UPDATED ACTION ITEMS LIST - STATUS BUTTONS ADDED */}
         <div style={styles.scrollableList}>
           <div style={styles.listHeader}>
             <h2 style={styles.listTitle}>Action Items ({momPoints.length})</h2>
@@ -515,159 +501,81 @@ export default function MomPointForm({ meetingId, token }) {
           {momPoints.length === 0 && !isAdding ? (
             <div style={styles.emptyState}>
               <div style={{ fontSize: "48px", marginBottom: "20px", opacity: 0.5 }}>📝</div>
-              <h3 style={{ fontSize: "20px", margin: "0 0 8px 0", color: "#1a1a2e" }}>
-                No action items yet
-              </h3>
+              <h3 style={{ fontSize: "20px", margin: "0 0 8px 0", color: "#1a1a2e" }}>No action items yet</h3>
               <p style={{ margin: "0 0 24px 0" }}>Start tracking meeting outcomes</p>
-              <button style={styles.primaryBtn} onClick={() => setIsAdding(true)}>
-                Create First Item
-              </button>
+              <button style={styles.primaryBtn} onClick={() => setIsAdding(true)}>Create First Item</button>
             </div>
           ) : (
             momPoints.map(point => (
               <div key={point.id} style={styles.card}>
-                <div style={{ 
-                  display: "flex", 
-                  justifyContent: "space-between", 
-                  alignItems: "flex-start", 
-                  marginBottom: "16px" 
-                }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
                   <div>
-                    <span style={{ 
-                      fontSize: "12px", 
-                      color: "#64748b", 
-                      fontWeight: "600", 
-                      display: "block", 
-                      marginBottom: "4px" 
-                    }}>
+                    <span style={{ fontSize: "12px", color: "#64748b", fontWeight: "600", display: "block", marginBottom: "4px" }}>
                       #{point.id.toString().padStart(6, "0")}
                     </span>
-                    <h3 style={{ 
-                      fontSize: "18px", 
-                      fontWeight: "700", 
-                      color: "#1a1a2e", 
-                      margin: "0 0 12px 0" 
-                    }}>
+                    <h3 style={{ fontSize: "18px", fontWeight: "700", color: "#1a1a2e", margin: "0 0 12px 0" }}>
                       {point.topic}
                     </h3>
                   </div>
                   <div style={{ display: "flex", gap: "8px" }}>
-                    <button 
-                      style={styles.editAction} 
-                      onClick={() => handleEdit(point)}
-                    >
-                      Edit
-                    </button>
-                    <button 
-                      style={{ 
-                        padding: "6px 12px", 
-                        background: "#ef4444", 
-                        color: "white", 
-                        border: "none", 
-                        borderRadius: "6px", 
-                        cursor: "pointer", 
-                        fontSize: "12px" 
-                      }} 
-                      onClick={() => handleDelete(point.id)}
-                    >
+                    <button style={styles.editAction} onClick={() => handleEdit(point)}>Edit</button>
+                    <button style={{ padding: "6px 12px", background: "#ef4444", color: "white", border: "none", borderRadius: "6px", cursor: "pointer", fontSize: "12px" }} onClick={() => handleDelete(point.id)}>
                       Delete
                     </button>
                   </div>
                 </div>
 
-                <div style={{ 
-                  marginBottom: "16px", 
-                  padding: "16px", 
-                  background: "#f8fafc", 
-                  borderRadius: "12px", 
-                  borderLeft: "4px solid #8B0000" 
-                }}>
-                  <div style={{ 
-                    display: "flex", 
-                    gap: "12px", 
-                    alignItems: "flex-start", 
-                    marginBottom: "8px" 
-                  }}>
+                {/* DISCUSSION & DECISIONS - UNCHANGED */}
+                <div style={{ marginBottom: "16px", padding: "16px", background: "#f8fafc", borderRadius: "12px", borderLeft: "4px solid #8B0000" }}>
+                  <div style={{ display: "flex", gap: "12px", alignItems: "flex-start", marginBottom: "8px" }}>
                     <span style={{ fontSize: "18px" }}>📋</span>
                     <div>
-                      <div style={{ 
-                        fontSize: "13px", 
-                        fontWeight: "600", 
-                        color: "#64748b", 
-                        marginBottom: "8px" 
-                      }}>Discussion</div>
-                      <p style={{ margin: 0, color: "#475569", lineHeight: "1.6" }}>
-                        {point.point}
-                      </p>
+                      <div style={{ fontSize: "13px", fontWeight: "600", color: "#64748b", marginBottom: "8px" }}>Discussion</div>
+                      <p style={{ margin: 0, color: "#475569", lineHeight: "1.6" }}>{point.point}</p>
                     </div>
                   </div>
                 </div>
 
                 {point.decisions && (
-                  <div style={{ 
-                    padding: "16px", 
-                    background: "#f0f9ff", 
-                    borderRadius: "12px", 
-                    borderLeft: "4px solid #3b82f6", 
-                    marginBottom: "20px" 
-                  }}>
+                  <div style={{ padding: "16px", background: "#f0f9ff", borderRadius: "12px", borderLeft: "4px solid #3b82f6", marginBottom: "20px" }}>
                     <div style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
                       <span style={{ fontSize: "18px" }}>✅</span>
                       <div>
-                        <div style={{ 
-                          fontSize: "13px", 
-                          fontWeight: "600", 
-                          color: "#64748b", 
-                          marginBottom: "8px" 
-                        }}>Decision</div>
-                        <p style={{ 
-                          margin: 0, 
-                          color: "#1a1a2e", 
-                          fontWeight: "500", 
-                          lineHeight: "1.6" 
-                        }}>
-                          {point.decisions}
-                        </p>
+                        <div style={{ fontSize: "13px", fontWeight: "600", color: "#64748b", marginBottom: "8px" }}>Decision</div>
+                        <p style={{ margin: 0, color: "#1a1a2e", fontWeight: "500", lineHeight: "1.6" }}>{point.decisions}</p>
                       </div>
                     </div>
                   </div>
                 )}
 
-                <div style={{ 
-                  display: "flex", 
-                  justifyContent: "space-between", 
-                  alignItems: "center", 
-                  paddingTop: "16px", 
-                  borderTop: "1px solid #e5e7eb" 
-                }}>
+                {/* ✅ NEW STATUS SECTION WITH BUTTONS */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "16px", borderTop: "1px solid #e5e7eb" }}>
                   <div>
-                    <div style={{ 
-                      fontSize: "11px", 
-                      color: "#64748b", 
-                      fontWeight: "600", 
-                      marginBottom: "2px" 
-                    }}>Assigned</div>
-                    <div style={{ fontSize: "14px", fontWeight: "600" }}>
-                      {getEmployeeNames(point.assigned_to)}
-                    </div>
+                    <div style={{ fontSize: "11px", color: "#64748b", fontWeight: "600", marginBottom: "2px" }}>Assigned</div>
+                    <div style={{ fontSize: "14px", fontWeight: "600" }}>{getEmployeeNames(point.assigned_to)}</div>
                   </div>
+                  
                   <div>
-                    <div style={{ 
-                      fontSize: "11px", 
-                      color: "#64748b", 
-                      fontWeight: "600", 
-                      marginBottom: "2px" 
-                    }}>Due</div>
-                    <div style={{ fontSize: "14px", fontWeight: "600" }}>
-                      {point.timeline || "ASAP"}
-                    </div>
+                    <div style={{ fontSize: "11px", color: "#64748b", fontWeight: "600", marginBottom: "2px", textAlign: "right" }}>Due</div>
+                    <div style={{ fontSize: "14px", fontWeight: "600" }}>{point.timeline || "ASAP"}</div>
                   </div>
-                  <div style={{
-                    ...styles.statusBadge,
-                    backgroundColor: getStatusStyle(point.status).bg,
-                    color: getStatusStyle(point.status).color
-                  }}>
-                    {point.status}
+
+                  {/* ✅ STATUS BUTTONS - REPLACES BADGE */}
+                  <div style={styles.statusButtons}>
+                    {["In Progress", "Completed", "Revoked"].map(status => (
+                      <button
+                        key={status}
+                        style={{
+                          ...styles.statusBtn,
+                          ...(point.status === status ? styles.statusBtnActive : {}),
+                          ...(point.status === "Completed" && status !== "Completed" ? styles.statusBtnDisabled : {})
+                        }}
+                        onClick={() => updateStatus(point.id, status)}
+                        disabled={point.status === "Completed" && status !== "Completed"}
+                      >
+                        {status === "In Progress" ? "🔄 Progress" : status === "Completed" ? "✅ Done" : "❌ Revoke"}
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>

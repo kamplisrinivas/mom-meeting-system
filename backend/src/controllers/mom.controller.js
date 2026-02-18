@@ -92,7 +92,7 @@ exports.createMomPoint = async (req, res) => {
             <p><b>Timeline:</b> ${timeline || "Not set"}</p>
             <p><b>Status:</b> ${status || "Assigned"}</p>
             <br/>
-            <p>Please take necessary action.</p>
+            <p>Please take necessary action and update status in <a href="http://localhost:5173/employee-tasks">Employee Dashboard</a></p>
           `;
 
           await sendMail(
@@ -137,17 +137,18 @@ exports.getMomByMeeting = async (req, res) => {
       SELECT 
         mp.*,
         m.title AS meeting_title,
+        m.meeting_date,
         GROUP_CONCAT(
-          DISTINCT CONCAT(e.EmployeeName, ' (', e.Department, ')')
-          SEPARATOR ', '
+         DISTINCT CONCAT(e.EmployeeName, ' (', e.Department, ')')
+         SEPARATOR ', '
         ) AS assignee_details
       FROM mom_points mp
       LEFT JOIN meetings m ON mp.meeting_id = m.id
       LEFT JOIN employees e 
         ON FIND_IN_SET(
-             e.EmployeeID,
-             REPLACE(REPLACE(mp.assigned_to, '[', ''), ']', '')
-           )
+           e.EmployeeID,
+           REPLACE(REPLACE(mp.assigned_to, '[', ''), ']', '')
+         )
       WHERE mp.meeting_id = ?
       GROUP BY mp.id
       ORDER BY mp.created_at ASC
@@ -166,13 +167,12 @@ exports.getMomByMeeting = async (req, res) => {
 };
 
 // ============================
-// UPDATE MOM POINT
+// UPDATE MOM POINT (FULL)
 // ============================
 exports.updateMomPoint = async (req, res) => {
   try {
     const { id } = req.params;
-    const { topic, point, decisions, assigned_to, timeline, status } =
-      req.body;
+    const { topic, point, decisions, assigned_to, timeline, status } = req.body;
 
     if (!point || !topic) {
       return res.status(400).json({
@@ -210,6 +210,113 @@ exports.updateMomPoint = async (req, res) => {
   } catch (err) {
     console.error("Update MOM Error:", err);
     res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// ============================
+// ✅ NEW: GET MY TASKS (Employee Dashboard)
+// ============================
+exports.getMyTasks = async (req, res) => {
+  try {
+    const userId = req.user.EmployeeID; // From JWT auth middleware
+
+    console.log("🔍 Fetching tasks for employee:", userId);
+
+    const query = `
+      SELECT 
+        mp.*,
+        m.title as meeting_title,
+        m.meeting_date,
+        DATE_FORMAT(mp.timeline, '%Y-%m-%d') as timeline_formatted
+      FROM mom_points mp
+      JOIN meetings m ON mp.meeting_id = m.id
+      WHERE JSON_CONTAINS(mp.assigned_to, JSON_QUOTE(?))
+      ORDER BY m.meeting_date DESC, mp.created_at DESC
+    `;
+
+    db.query(query, [userId], (err, results) => {
+      if (err) {
+        console.error("❌ My tasks query error:", err);
+        return res.status(500).json({ 
+          success: false, 
+          error: err.message 
+        });
+      }
+      
+      console.log("✅ Found tasks for employee", userId, ":", results.length);
+      res.json({ 
+        success: true, 
+        data: results 
+      });
+    });
+  } catch (error) {
+    console.error("Get my tasks error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// ============================
+// ✅ NEW: UPDATE STATUS ONLY (Employee updates)
+// ============================
+exports.updateStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const userId = req.user.EmployeeID;
+
+    if (!status) {
+      return res.status(400).json({
+        success: false,
+        message: "Status is required"
+      });
+    }
+
+    console.log(`🔄 Updating status for MOM ${id} to ${status} by user ${userId}`);
+
+    // ✅ SECURITY: Check if user is assigned to this task
+    const [checkResult] = await db.query(
+      `SELECT assigned_to FROM mom_points WHERE id = ?`,
+      [id]
+    );
+
+    if (checkResult.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "MOM point not found"
+      });
+    }
+
+    const assignedTo = JSON.parse(checkResult[0].assigned_to || '[]');
+    if (!assignedTo.includes(userId.toString())) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized - you are not assigned to this task"
+      });
+    }
+
+    // ✅ UPDATE STATUS
+    const [result] = await db.query(
+      `UPDATE mom_points SET status = ? WHERE id = ?`,
+      [status, id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "MOM point not found"
+      });
+    }
+
+    console.log(`✅ Status updated: MOM ${id} → ${status}`);
+
+    res.json({ 
+      success: true, 
+      message: `Status updated to ${status}`,
+      data: { id, status }
+    });
+  } catch (error) {
+    console.error("Update status error:", error);
+    res.status(500).json({ success: false, error: error.message });
   }
 };
 
