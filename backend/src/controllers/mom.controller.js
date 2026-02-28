@@ -88,7 +88,7 @@ exports.createMomPoint = async (req, res) => {
             <p><b>Meeting ID:</b> ${meeting_id}</p>
             <p><b>Topic:</b> ${topic}</p>
             <p><b>Discussion:</b> ${point}</p>
-            <p><b>Decision:</b> ${decisions || "-"}</p>
+            
             <p><b>Timeline:</b> ${timeline || "Not set"}</p>
             <p><b>Status:</b> ${status || "Assigned"}</p>
             <br/>

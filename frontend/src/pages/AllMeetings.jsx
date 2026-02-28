@@ -8,20 +8,24 @@ export default function AllMeetings() {
   const token = localStorage.getItem("token");
 
   const fetchAllMeetings = useCallback(async () => {
-    if (!token) return;
-    try {
-      setLoading(true);
-      const res = await fetch(`${API_URL}/api/meetings`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await res.json();
-      setMeetings(data.success ? data.data.filter(Boolean) : []);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [token]);
+  if (!token) return;
+  try {
+    setLoading(true);
+    const res = await fetch(`${API_URL}/api/meetings`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    const data = await res.json();
+
+    console.log("🔥 FULL API RESPONSE:", data);   // 👈 ADD THIS
+
+    setMeetings(data.success ? data.data.filter(Boolean) : []);
+  } catch (err) {
+    console.error(err);
+  } finally {
+    setLoading(false);
+  }
+}, [token]);
 
   useEffect(() => {
     fetchAllMeetings();
@@ -82,7 +86,7 @@ const MeetingCard = ({ meeting }) => (
     )}
     
     <div style={styles.meetingFooter}>
-      <span style={styles.department}>{meeting.department_name}</span>
+      <span style={styles.department}>{meeting.department}</span>
       <span style={styles.createdBy}>By ID: {meeting.created_by}</span>
     </div>
   </div>

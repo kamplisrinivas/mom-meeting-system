@@ -6,7 +6,13 @@ export default function Meetings() {
   const [meetings, setMeetings] = useState([]);
 
   useEffect(() => {
-    api.get("/meetings").then(res => setMeetings(res.data.data));
+    api.get("/meetings")
+      .then(res => {
+        setMeetings(res.data.data);
+      })
+      .catch(err => {
+        console.error("Error fetching meetings:", err);
+      });
   }, []);
 
   return (
@@ -17,6 +23,7 @@ export default function Meetings() {
         <thead>
           <tr>
             <th>Title</th>
+            <th>Department</th> {/* ✅ Added */}
             <th>Date</th>
             <th>MOM</th>
           </tr>
@@ -25,6 +32,7 @@ export default function Meetings() {
           {meetings.map(m => (
             <tr key={m.id}>
               <td>{m.title}</td>
+              <td>{m.department}</td> {/* ✅ Display Department */}
               <td>{m.meeting_date}</td>
               <td>
                 <Link to={`/mom/${m.id}`}>View MOM</Link>

@@ -232,7 +232,7 @@ export default function MomPointForm({ meetingId, token }) {
   const [formData, setFormData] = useState({
     topic: "",
     point: "",
-    decisions: "",
+    //decisions: "",
     assigned_to: [],
     timeline: "",
     status: "Assigned",
@@ -315,7 +315,7 @@ useEffect(() => {
           meeting_id: parseInt(meetingId),
           topic: formData.topic.trim(),
           point: formData.point.trim(),
-          decisions: formData.decisions.trim() || null,
+          //decisions: formData.decisions.trim() || null,
           assigned_to: formData.assigned_to,
           timeline: formData.timeline || null,
           status: formData.status,
@@ -324,7 +324,7 @@ useEffect(() => {
       
       if (res.ok) {
         setFormData({
-          topic: "", point: "", decisions: "", assigned_to: [], timeline: "", status: "Assigned"
+          topic: "", point: "", assigned_to: [], timeline: "", status: "Assigned"
         });
         setIsAdding(false);
         setEditingId(null);
@@ -343,7 +343,7 @@ useEffect(() => {
     setFormData({
       topic: point.topic || "",
       point: point.point || "",
-      decisions: point.decisions || "",
+      //decisions: point.decisions || "",
       assigned_to: Array.isArray(point.assigned_to) ? point.assigned_to : [],
       timeline: point.timeline || "",
       status: point.status || "Assigned",
@@ -406,12 +406,13 @@ useEffect(() => {
     return colors[status] || colors.Assigned;
   };
 
-  const getEmployeeNames = (assignedIds) => {
-    if (!Array.isArray(assignedIds) || !assignedIds.length) return "Unassigned";
-    return assignedIds.slice(0, 2)
-      .map(id => employees.find(e => e.EmployeeID == id)?.EmployeeName || `ID:${id}`)
-      .join(", ") + (assignedIds.length > 2 ? ` +${assignedIds.length-2}` : "");
-  };
+  const getAssigneeDetails = (assignees) => {
+  if (!assignees || !assignees.length) return "Unassigned";
+
+  return assignees.map(emp =>
+    `${emp.EmployeeName} (ID: ${emp.EmployeeID}, ${emp.Department || "No Dept"})`
+  ).join(" | ");
+};
 
   const employeeOptions = employees.map(employee => ({
     value: employee.EmployeeID,
@@ -435,24 +436,72 @@ useEffect(() => {
   return (
     <div style={styles.app}>
       {/* AGENDA SECTION */}
-      <div style={styles.agendaSection}>
-        <h2 style={styles.agendaTitle}>📋 Meeting Agenda</h2>
-        {meeting?.agenda_items ? (
-          <div style={styles.agendaItems}>
-            {meeting.agenda_items.map((item, index) => (
-              <div key={index} style={styles.agendaItem}>
-                <div style={{ fontSize: "16px", fontWeight: "700", color: "#1e293b", marginBottom: "8px" }}>
-                  {index + 1}. {item}
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div style={{ textAlign: "center", padding: "40px", color: "#64748b" }}>
-            📄 Agenda will be available after meeting creation
-          </div>
-        )}
+      {/* AGENDA SECTION */}
+<div style={styles.agendaSection}>
+  <h2 style={styles.agendaTitle}>📋 Meeting Overview</h2>
+
+  {/* Description */}
+  {meeting?.description && (
+    <div
+      style={{
+        marginBottom: "28px",
+        padding: "24px",
+        background: "linear-gradient(135deg, #f1f5f9, #e2e8f0)",
+        borderRadius: "18px",
+        borderLeft: "5px solid #6366f1",
+      }}
+    >
+      <div
+        style={{
+          fontSize: "15px",
+          fontWeight: "700",
+          color: "#4f46e5",
+          marginBottom: "10px",
+        }}
+      >
+        📝 Description
       </div>
+      <div
+        style={{
+          fontSize: "16px",
+          color: "#334155",
+          lineHeight: "1.8",
+        }}
+      >
+        {meeting.description}
+      </div>
+    </div>
+  )}
+
+  {/* Agenda Items */}
+  {meeting?.agenda_items && meeting.agenda_items.length > 0 ? (
+    <div style={styles.agendaItems}>
+      {meeting.agenda_items.map((item, index) => (
+        <div key={index} style={styles.agendaItem}>
+          <div
+            style={{
+              fontSize: "16px",
+              fontWeight: "700",
+              color: "#1e293b",
+            }}
+          >
+            {index + 1}. {item}
+          </div>
+        </div>
+      ))}
+    </div>
+  ) : (
+    <div
+      style={{
+        textAlign: "center",
+        padding: "30px",
+        color: "#64748b",
+      }}
+    >
+      📄 No agenda items available
+    </div>
+  )}
+</div>
 
       {/* MEETING HEADER */}
       <div style={styles.meetingHeader}>
@@ -465,19 +514,39 @@ useEffect(() => {
               {meeting.title || "Untitled Meeting"}
             </div>
             <div style={styles.statsGrid}>
-              <div style={styles.statCard}>
-                <div style={styles.statValue}>{momPoints.length}</div>
-                <div style={styles.statLabel}>Action Items</div>
-              </div>
-              <div style={styles.statCard}>
-                <div style={styles.statValue}>{employees.length}</div>
-                <div style={styles.statLabel}>Team Members</div>
-              </div>
-              <div style={styles.statCard}>
-                <div style={styles.statValue}>{meeting.department_name || "N/A"}</div>
-                <div style={styles.statLabel}>Department</div>
-              </div>
-            </div>
+  <div style={styles.statCard}>
+    <div style={styles.statValue}>{momPoints.length}</div>
+    <div style={styles.statLabel}>Action Items</div>
+  </div>
+
+  <div style={styles.statCard}>
+    <div style={styles.statValue}>{employees.length}</div>
+    <div style={styles.statLabel}>Team Members</div>
+  </div>
+
+  <div style={styles.statCard}>
+    <div style={styles.statValue}>
+      {meeting.department || "N/A"}
+    </div>
+    <div style={styles.statLabel}>Department</div>
+  </div>
+
+  <div style={styles.statCard}>
+    <div style={styles.statValue}>
+      {meeting.meeting_date
+        ? new Date(meeting.meeting_date).toLocaleDateString("en-IN")
+        : "N/A"}
+    </div>
+    <div style={styles.statLabel}>Meeting Date</div>
+  </div>
+
+  <div style={styles.statCard}>
+    <div style={styles.statValue}>
+      {meeting.meeting_time || "N/A"}
+    </div>
+    <div style={styles.statLabel}>Meeting Time</div>
+  </div>
+</div>
           </div>
         )}
       </div>
@@ -572,15 +641,8 @@ useEffect(() => {
               />
             </div>
 
-            <div style={styles.formGroup}>
-              <label style={styles.formLabel}>Decisions</label>
-              <textarea 
-                style={styles.textarea} 
-                value={formData.decisions} 
-                onChange={e => setFormData({...formData, decisions: e.target.value})}
-                placeholder="Final decisions & resolutions"
-              />
-            </div>
+            
+           
           </div>
         )}
 
@@ -659,7 +721,7 @@ useEffect(() => {
                       color: "#64748b",
                       fontWeight: "600",
                     }}>
-                      👥 {getEmployeeNames(point.assigned_to)}
+                      👥 {getAssigneeDetails(point.assignees)}
                     </div>
                   </div>
                 </div>
@@ -722,31 +784,7 @@ useEffect(() => {
                 </div>
               </div>
 
-              {/* DECISION */}
-              {point.decisions && (
-                <div style={{
-                  padding: "24px",
-                  background: "rgba(220, 252, 231, 0.8)",
-                  borderRadius: "20px",
-                  borderLeft: "5px solid #10b981",
-                  marginBottom: "28px",
-                }}>
-                  <div style={{
-                    fontSize: "15px",
-                    fontWeight: "700",
-                    color: "#166534",
-                    marginBottom: "16px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "12px",
-                  }}>
-                    ✅ Decision
-                  </div>
-                  <div style={{ color: "#14532d", lineHeight: "1.8", fontSize: "16px", fontWeight: "500" }}>
-                    {point.decisions}
-                  </div>
-                </div>
-              )}
+              
 
               {/* ACTION BAR */}
               <div style={{

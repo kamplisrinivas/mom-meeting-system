@@ -3,10 +3,8 @@ const nodemailer = require("nodemailer");
 
 const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST || "smtp.rediffmailpro.com",
-  port: Number(process.env.EMAIL_PORT) || 465,
-  secure: true,
-
-  // ⭐⭐⭐ THIS FIXES REDIFF
+  port: Number(process.env.EMAIL_PORT) || 587, // 465 for secure true
+  secure: false, // MUST be true for 465
   name: "slrm.in",
   helo: "slrm.in",
 
@@ -20,7 +18,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// verify
+// Verify SMTP connection on server start
 transporter.verify(function (error) {
   if (error) {
     console.error("❌ SMTP connection error:", error.message);
@@ -29,6 +27,7 @@ transporter.verify(function (error) {
   }
 });
 
+// Clean reusable sendEmail function
 const sendEmail = async (to, subject, html) => {
   try {
     const info = await transporter.sendMail({
@@ -39,7 +38,7 @@ const sendEmail = async (to, subject, html) => {
     });
 
     console.log("✅ Email sent:", info.response);
-    return true;
+    return info;
   } catch (error) {
     console.error("❌ Email failed:", error.message);
     throw error;
