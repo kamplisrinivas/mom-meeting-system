@@ -13,6 +13,7 @@ import LoginPage from "./pages/LoginPage";
 import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
 import MeetingForm from "./components/MeetingForm";
+import Reports from "./pages/Reports";
 
 const pageStyles = {
   backBtn: {
@@ -47,8 +48,12 @@ function App() {
     localStorage.setItem("token", newToken);
     localStorage.setItem("userRole", newUser?.role);
     
-     // ✅ EMPLOYEE → Employee Dashboard ONLY
-    window.location.href = "/employee-tasks";
+    // ✅ REDIRECT LOGIC: Admin to Dashboard, Employee to Tasks
+    if (newUser?.role === "Admin") {
+        window.location.href = "/dashboard";
+    } else {
+        window.location.href = "/employee-tasks";
+    }
   };
 
   const handleLogout = () => {
@@ -58,28 +63,11 @@ function App() {
     window.location.href = "/login";
   };
 
-  // ✅ FIXED: Simple token check only
   const ProtectedRoute = ({ children }) => {
     if (!token) {
       return <Navigate to="/login" replace />;
     }
     return children;
-  };
-
-
-  // ✅ Role-Based Layout Wrapper
-  const RoleBasedLayout = ({ children }) => {
-    const userRole = localStorage.getItem("userRole");
-    
-    return (
-      <Layout onLogout={handleLogout}>
-        {userRole === "Admin" ? (
-          children  // Admin sees full dashboard
-        ) : (
-          <Navigate to="/employee-tasks" replace />  // Employee ONLY sees EmployeeDashboard
-        )}
-      </Layout>
-    );
   };
 
   const MomPointFormPage = () => {
@@ -132,208 +120,314 @@ function App() {
   };
 
   const AllMeetings = () => {
-    const [meetings, setMeetings] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const token = localStorage.getItem("token");
-    const navigate = useNavigate();
+  const [meetings, setMeetings] = useState([]);
+  const [filteredMeetings, setFilteredMeetings] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-    const allMeetingsStyles = {
-      container: { maxWidth: '1400px', margin: '0 auto' },
-      pageHeader: {
-        background: 'white',
-        padding: '2.5rem',
-        borderRadius: '24px',
-        marginBottom: '2rem',
-        boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-      },
-      h1: { fontSize: '2.5rem', fontWeight: 800, color: '#1a1a2e', margin: '0 0 0.5rem 0' },
-      headerText: { color: '#64748b', fontSize: '1.2rem', margin: 0 },
-      addBtn: {
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        color: 'white',
-        textDecoration: 'none',
-        padding: '1.2rem 2.5rem',
-        borderRadius: '16px',
-        fontSize: '1.1rem',
-        fontWeight: 600,
-      },
-      meetingsSection: {
-        background: 'white',
-        borderRadius: '24px',
-        boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
-        overflow: 'hidden',
-      },
-      sectionHeader: {
-        padding: '2rem 2.5rem',
-        borderBottom: '1px solid #e2e8f0',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-      },
-      h2: { fontSize: '1.8rem', fontWeight: 700, color: '#1a1a2e', margin: 0 },
-      meetingsGrid: {
-        padding: '2.5rem',
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))',
-        gap: '2rem',
-      },
-      meetingCard: {
-        background: 'linear-gradient(145deg, #ffffff, #f8fafc)',
-        padding: '2.5rem',
-        borderRadius: '20px',
-        border: '1px solid #e2e8f0',
-        cursor: 'pointer',
-        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        boxShadow: '0 10px 30px rgba(0,0,0,0.08)',
-        position: 'relative',
-        overflow: 'hidden',
-      },
-      meetingTitle: { 
-        fontSize: '1.4rem', 
-        fontWeight: 700, 
-        color: '#1a1a2e', 
-        margin: '0 0 12px 0',
-        lineHeight: 1.3
-      },
-      meetingDate: { 
-        color: '#64748b', 
-        fontSize: '1rem', 
-        fontWeight: 500,
-        marginBottom: '8px'
-      },
-      meetingDept: { 
-        background: '#e2e8f0', 
-        color: '#475569', 
-        padding: '6px 16px', 
-        borderRadius: '20px', 
-        fontSize: '0.9rem',
-        fontWeight: 500,
-        display: 'inline-block'
-      },
-      clickHint: {
-        position: 'absolute',
-        top: '16px',
-        right: '16px',
-        background: 'linear-gradient(135deg, #10b981, #059669)',
-        color: 'white',
-        padding: '6px 12px',
-        borderRadius: '20px',
-        fontSize: '0.8rem',
-        fontWeight: 600,
-      },
-      emptyState: {
-        textAlign: 'center',
-        padding: '6rem 2rem',
-        color: '#94a3b8',
-      },
-      emptyIcon: { fontSize: '5rem', marginBottom: '2rem', opacity: 0.5 },
-      createLink: {
-        background: 'linear-gradient(135deg, #667eea, #764ba2)',
-        color: 'white',
-        padding: '1rem 2rem',
-        borderRadius: '12px',
-        textDecoration: 'none',
-        fontWeight: 600,
-        display: 'inline-block',
-      },
-      spinner: {
-        width: '24px',
-        height: '24px',
-        border: '3px solid #e2e8f0',
+  const [filters, setFilters] = useState({
+    searchText: "",
+    dateFrom: "",
+    dateTo: "",
+    meetingId: "",
+    createdBy: "",
+    department: ""
+  });
 
-        borderTop: '3px solid #667eea',
-        borderRadius: '50%',
-        animation: 'spin 1s linear infinite',
-      },
+  const token = localStorage.getItem("token");
+  const navigate = useNavigate();
+
+  const styles = {
+    container: {
+      maxWidth: "1400px",
+      margin: "0 auto"
+    },
+
+    header: {
+      background: "white",
+      padding: "25px",
+      borderRadius: "18px",
+      marginBottom: "20px",
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      boxShadow: "0 5px 20px rgba(0,0,0,0.08)"
+    },
+
+    newBtn: {
+      background: "linear-gradient(135deg,#667eea,#764ba2)",
+      color: "white",
+      padding: "10px 22px",
+      borderRadius: "10px",
+      textDecoration: "none",
+      fontWeight: "600"
+    },
+
+    filterBox: {
+      background: "white",
+      padding: "20px",
+      borderRadius: "18px",
+      marginBottom: "20px",
+      boxShadow: "0 5px 20px rgba(0,0,0,0.08)"
+    },
+
+    filterGrid: {
+      display: "grid",
+      gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))",
+      gap: "12px"
+    },
+
+    input: {
+      padding: "10px",
+      borderRadius: "8px",
+      border: "1px solid #ddd"
+    },
+
+    clearBtn: {
+      background: "#ef4444",
+      color: "white",
+      border: "none",
+      borderRadius: "8px",
+      padding: "10px",
+      cursor: "pointer"
+    },
+
+    grid: {
+      display: "grid",
+      gridTemplateColumns: "repeat(auto-fill,minmax(350px,1fr))",
+      gap: "20px"
+    },
+
+    card: {
+      background: "white",
+      padding: "22px",
+      borderRadius: "16px",
+      border: "1px solid #e5e7eb",
+      cursor: "pointer",
+      transition: "0.25s",
+      boxShadow: "0 5px 18px rgba(0,0,0,0.08)"
+    },
+
+    title: {
+      fontSize: "18px",
+      fontWeight: "700",
+      marginBottom: "8px"
+    },
+
+    badge: {
+      display: "inline-block",
+      background: "#e2e8f0",
+      padding: "5px 12px",
+      borderRadius: "15px",
+      fontSize: "13px",
+      marginTop: "6px"
+    }
+  };
+
+  useEffect(() => {
+    if (!token) return;
+
+    const fetchMeetings = async () => {
+      try {
+        setLoading(true);
+
+        const API_URL =
+          import.meta.env.VITE_API_URL || "http://localhost:5001";
+
+        const res = await fetch(`${API_URL}/api/meetings`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        const data = await res.json();
+
+        const meetingsData = data.success ? data.data.filter(Boolean) : [];
+
+        setMeetings(meetingsData);
+        setFilteredMeetings(meetingsData);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
     };
 
-    useEffect(() => {
-      if (!token) return;
-      const fetchAllMeetings = async () => {
-        try {
-          setLoading(true);
-          const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001";
-          const res = await fetch(`${API_URL}/api/meetings`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          const data = await res.json();
-          setMeetings(data.success ? data.data.filter(Boolean) : []);
-        } catch (err) {
-          console.error(err);
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchAllMeetings();
-    }, [token]);
+    fetchMeetings();
+  }, [token]);
 
-    const handleMeetingClick = (meetingId) => {
-      navigate(`/mom/${meetingId}`);
-    };
+  useEffect(() => {
+    const filtered = meetings.filter((m) => {
 
-    return (
-      <div style={allMeetingsStyles.container}>
-        <div style={allMeetingsStyles.pageHeader}>
-          <div>
-            <h1 style={allMeetingsStyles.h1}>📋 All Meetings</h1>
-            <p style={allMeetingsStyles.headerText}>
-              Showing {meetings.length} total meetings • Click any to add MOM points
-            </p>
-          </div>
-          <a href="/meetings/create" style={allMeetingsStyles.addBtn}>➕ New Meeting</a>
+      const search = filters.searchText.toLowerCase();
+      const datePart = m.meeting_date?.split(" ")[0] || "";
+
+      return (
+        (!search ||
+          m.title?.toLowerCase().includes(search) ||
+          m.description?.toLowerCase().includes(search) ||
+          m.department?.toLowerCase().includes(search)) &&
+
+        (!filters.dateFrom || datePart >= filters.dateFrom) &&
+        (!filters.dateTo || datePart <= filters.dateTo) &&
+
+        (!filters.meetingId ||
+          m.id.toString().includes(filters.meetingId)) &&
+
+        (!filters.createdBy ||
+          m.created_by?.toString().includes(filters.createdBy)) &&
+
+        (!filters.department ||
+          m.department?.toLowerCase().includes(filters.department.toLowerCase()))
+      );
+    });
+
+    setFilteredMeetings(filtered);
+  }, [filters, meetings]);
+
+  const handleChange = (e) => {
+    setFilters({ ...filters, [e.target.name]: e.target.value });
+  };
+
+  const clearFilters = () => {
+    setFilters({
+      searchText: "",
+      dateFrom: "",
+      dateTo: "",
+      meetingId: "",
+      createdBy: "",
+      department: ""
+    });
+  };
+
+  const openMeeting = (id) => {
+    navigate(`/mom/${id}`);
+  };
+
+  return (
+    <div style={styles.container}>
+
+      {/* HEADER */}
+      <div style={styles.header}>
+        <div>
+          <h1>📋 All Meetings</h1>
+          <p>{filteredMeetings.length} meetings found</p>
         </div>
 
-        <div style={allMeetingsStyles.meetingsSection}>
-          <div style={allMeetingsStyles.sectionHeader}>
-            <h2 style={allMeetingsStyles.h2}>COMPLETE LIST ({meetings.length})</h2>
-            {loading && <div style={allMeetingsStyles.spinner} />}
-          </div>
+        <a href="/meetings/create" style={styles.newBtn}>
+          ➕ Create Meeting
+        </a>
+      </div>
 
-          {meetings.length === 0 ? (
-            <div style={allMeetingsStyles.emptyState}>
-              <div style={allMeetingsStyles.emptyIcon}>📋</div>
-              <h3>No meetings</h3>
-              <a href="/meetings/create" style={allMeetingsStyles.createLink}>
-                ➕ Create first meeting
-              </a>
-            </div>
-          ) : (
-            <div style={allMeetingsStyles.meetingsGrid}>
-              {meetings.slice(0, 20).map((meeting) => (
-                <div 
-                  key={meeting.id} 
-                  style={allMeetingsStyles.meetingCard}
-                  onClick={() => handleMeetingClick(meeting.id)}
-                >
-                  <div style={allMeetingsStyles.clickHint}>📝 Add MOM</div>
-                  <h3 style={allMeetingsStyles.meetingTitle}>{meeting.title}</h3>
-                  <p style={allMeetingsStyles.meetingDate}>
-                    📅 {new Date(meeting.meeting_date).toLocaleDateString('en-IN')}
-                    {meeting.meeting_time && ` | 🕒 ${meeting.meeting_time}`}
-                  </p>
-                  <div style={allMeetingsStyles.meetingDept}>
-                    {meeting.department_name || 'No department'}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+      {/* FILTER PANEL */}
+      <div style={styles.filterBox}>
+
+        <h3>🔎 Advanced Search</h3>
+
+        <div style={styles.filterGrid}>
+
+          <input
+            style={styles.input}
+            name="searchText"
+            placeholder="Search title / description"
+            value={filters.searchText}
+            onChange={handleChange}
+          />
+
+          <input
+            style={styles.input}
+            type="date"
+            name="dateFrom"
+            value={filters.dateFrom}
+            onChange={handleChange}
+          />
+
+          <input
+            style={styles.input}
+            type="date"
+            name="dateTo"
+            value={filters.dateTo}
+            onChange={handleChange}
+          />
+
+          <input
+            style={styles.input}
+            name="meetingId"
+            placeholder="Meeting ID"
+            value={filters.meetingId}
+            onChange={handleChange}
+          />
+
+          <input
+            style={styles.input}
+            name="createdBy"
+            placeholder="Created By"
+            value={filters.createdBy}
+            onChange={handleChange}
+          />
+
+          <input
+            style={styles.input}
+            name="department"
+            placeholder="Department"
+            value={filters.department}
+            onChange={handleChange}
+          />
+
+          <button onClick={clearFilters} style={styles.clearBtn}>
+            Clear Filters
+          </button>
         </div>
       </div>
-    );
-  };
+
+      {/* MEETING CARDS */}
+      {loading ? (
+        <p>Loading meetings...</p>
+      ) : filteredMeetings.length === 0 ? (
+        <p>No meetings found</p>
+      ) : (
+        <div style={styles.grid}>
+
+          {filteredMeetings.map((meeting) => (
+
+            <div
+              key={meeting.id}
+              style={styles.card}
+              onClick={() => openMeeting(meeting.id)}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "translateY(-5px)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "translateY(0)";
+              }}
+            >
+
+              <div style={styles.title}>
+                {meeting.title}
+              </div>
+
+              <div>
+                📅 {new Date(meeting.meeting_date).toLocaleDateString("en-IN")}
+              </div>
+
+              <div style={styles.badge}>
+                🏢 {meeting.department || "No Department"}
+              </div>
+
+            </div>
+
+          ))}
+
+        </div>
+      )}
+
+    </div>
+  );
+};
 
   return (
     <BrowserRouter>
       <Routes>
         <Route 
           path="/login" 
-          element={
-            token ? <Navigate to="/dashboard" /> : <LoginPage onLoginSuccess={handleLoginSuccess} />
-          } 
+          element={token ? <Navigate to="/dashboard" /> : <LoginPage onLoginSuccess={handleLoginSuccess} />} 
         />
         <Route 
           path="/" 
@@ -343,12 +437,18 @@ function App() {
             </ProtectedRoute>
           }
         >
+          {/* ✅ CHILD ROUTES RENDER INSIDE THE <OUTLET /> IN LAYOUT */}
           <Route index element={<Navigate to="/dashboard" />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="meetings/create" element={<MeetingFormPage />} />
           <Route path="meetings" element={<AllMeetings />} />
           <Route path="mom/:meetingId" element={<MomPointFormPage />} />
-          <Route path="employee-tasks" element={<EmployeeDashboard />} /> {/* ✅ EMPLOYEE ROUTE */}
+          <Route path="employee-tasks" element={<EmployeeDashboard />} />
+          
+          {/* ✅ MISSING ROUTE ADDED HERE */}
+          <Route path="reports" element={<Reports />} /> 
+
+          <Route path="/meetings/:id/mom" element={<MomPointForm />} />
         </Route>
       </Routes>
     </BrowserRouter>

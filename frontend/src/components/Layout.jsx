@@ -31,7 +31,7 @@ const Layout = ({ onLogout }) => {
             <SidebarLink to="/meetings/create" label=" Create Meeting" icon="➕" />
             <SidebarLink to="/meetings" label=" All Meetings" icon="📋" />
             <SidebarLink to="/employee-tasks" label=" My Tasks" icon="🎯" />  {/* 👈 FIXED PATH */}
-            <SidebarLink to="/reports" label=" Reports" icon="📈" disabled />
+            <SidebarLink to="/reports" label=" Reports" icon="📈"  />
           </nav>
         </aside>
 

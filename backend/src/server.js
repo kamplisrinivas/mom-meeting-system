@@ -7,15 +7,14 @@ const authMiddleware = require("./middlewares/authMiddleware");
 
 const app = express();
 
-/* ================= MIDDLEWARE FIRST ================= */
+/* ================= MIDDLEWARE ================= */
 app.use(cors());
 app.use(express.json());
 
 /* ================= ROUTES ================= */
 
-const departmentRoutes = require("./routes/department.routes");  // ← CORRECT IMPORT
-app.use('/api/departments',  departmentRoutes);  // ✅ CORRECT VARIABLE
-
+const departmentRoutes = require("./routes/department.routes");
+app.use("/api/departments", departmentRoutes);
 
 const employeeRoutes = require("./routes/employee.routes");
 app.use("/api/employees", employeeRoutes);
@@ -35,6 +34,9 @@ app.use("/api/actions", actionRoutes);
 const dashboardRoutes = require("./routes/dashboard.routes");
 app.use("/api/dashboard", dashboardRoutes);
 
+/* ✅ REPORT ROUTES */
+const reportRoutes = require("./routes/reportRoutes");
+app.use("/api/reports", reportRoutes);
 
 /* ================= TEST ROUTES ================= */
 
@@ -60,5 +62,5 @@ app.get("/api/auth/me", authMiddleware, (req, res) => {
 const PORT = process.env.PORT || 5001;
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });

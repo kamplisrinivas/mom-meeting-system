@@ -15,18 +15,27 @@ export default function MeetingForm({ token, refreshMeetings }) {
     { id: 566, name: "RAVINDRA C JOSHI" },
   ];
 
+  // 🔥 Hardcoded Venues
+const venues = [
+  "Ayodhya, Conference hall Second Floor Admin Building",
+  "Kashi, Conference hall First Floor Admin Building",
+  "Kishkinda, Conference hall Third Floor Admin Building",
+];
+
   const [meeting, setMeeting] = useState({
-    title: "",
-    description: "",
-    meeting_date: "",
-    meeting_time: "",
-    department: "",
-    meeting_type: "Offline",
-    platform: "",
-    venue: "",
-    created_by: "",
-    created_by_name: "", // for Others option
-  });
+  title: "",
+  description: "",
+  meeting_date: "",
+  meeting_time: "",
+  department: "",
+  meeting_category: "", // NEW
+  meeting_type: "Offline",
+  venue: "",
+  venue_custom: "",
+  created_by: "",
+  created_by_name: "",
+  chaired_by: "", // NEW
+});
 
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -88,46 +97,66 @@ export default function MeetingForm({ token, refreshMeetings }) {
 
   // ================= CREATE MEETING =================
   const createMeeting = async () => {
-    if (!validateForm()) return;
+  if (!validateForm()) return;
 
-    setLoading(true);
-    try {
-      const payload = {
-        title: meeting.title,
-        description: meeting.description,
-        meeting_date: meeting.meeting_date,
-        meeting_time: meeting.meeting_time,
-        department: meeting.department,
-        meeting_type: meeting.meeting_type,
-        platform: meeting.platform,
-        venue: meeting.venue,
+  setLoading(true);
 
-        // 🔥 smart handling
-        created_by:
-          meeting.created_by === "other"
-            ? null
-            : parseInt(meeting.created_by),
+  try {
 
-        created_by_name:
-          meeting.created_by === "other"
-            ? meeting.created_by_name
-            : null,
-      };
+    // 🔥 Decide creator based on meeting category
+    //let creatorId = null;
 
-      const localToken =
-  localStorage.getItem("token") ||
-  localStorage.getItem("authToken");
+   // if (meeting.meeting_category === "technical") {
+     // creatorId = 33; // VINOD B S
+    //}
 
-const res = await fetch(`${API_URL}/api/meetings`, {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${localToken}`,
-  },
-  body: JSON.stringify(payload),
-});
+    //if (meeting.meeting_category === "commercial") {
+      //creatorId = 2098; // BRIJESH KUMAR UPADHYAY
+    //}
 
-      const data = await res.json();
+    //if (meeting.created_by === "566") {
+      //creatorId = 566; // RAVINDRA C JOSHI
+    //}
+
+    const payload = {
+  title: meeting.title,
+  description: meeting.description,
+  meeting_date: meeting.meeting_date,
+  meeting_time: meeting.meeting_time,
+
+  department: meeting.department,
+  meeting_type: meeting.meeting_type,
+  meeting_category: meeting.meeting_category,   // ✅ ADD THIS
+
+  venue:
+    meeting.venue === "other"
+      ? meeting.venue_custom
+      : meeting.venue,
+
+  //created_by: creatorId,
+
+  created_by_name:
+    meeting.created_by === "other"
+      ? meeting.created_by_name
+      : null,
+
+  chaired_by: meeting.chaired_by,
+}; 
+
+    const localToken =
+      localStorage.getItem("token") ||
+      localStorage.getItem("authToken");
+
+    const res = await fetch(`${API_URL}/api/meetings`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localToken}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
 
       if (res.ok) {
         alert(`✅ Meeting created! ID: ${data.meetingId}`);
@@ -280,17 +309,71 @@ const res = await fetch(`${API_URL}/api/meetings`, {
           </select>
         </div>
 
-        {/* Venue */}
+        {/*Meeting Category */}
         <div style={styles.fieldGroup}>
-          <label style={styles.label}>Venue/Platform</label>
-          <input
-            name="venue"
-            style={styles.input}
-            value={meeting.venue}
-            onChange={handleChange}
-            placeholder="Conference Room A1 / Zoom Link"
-          />
-        </div>
+  <label style={styles.label}>
+    Meeting Category <span style={styles.required}>*</span>
+  </label>
+
+  <select
+    name="meeting_category"
+    style={styles.selectInput}
+    value={meeting.meeting_category}
+    onChange={handleChange}
+  >
+    <option value="">Select Category</option>
+    <option value="technical">Technical Meeting</option>
+    <option value="commercial">Commercial Meeting</option>
+  </select>
+</div>
+
+          {/*CHAIRED BY */}
+
+          <div style={styles.fieldGroup}>
+  <label style={styles.label}>Chaired By</label>
+
+  <input
+    name="chaired_by"
+    style={styles.input}
+    value={meeting.chaired_by}
+    onChange={handleChange}
+    placeholder="MD Sir / Director / HOD"
+  />
+</div>
+
+        {/* Venue */}
+        {/* 🔥 Venue (Hardcoded + Custom) */}
+<div style={styles.fieldGroup}>
+  <label style={styles.label}>Venue</label>
+
+  <select
+    name="venue"
+    style={styles.selectInput}
+    value={meeting.venue}
+    onChange={handleChange}
+  >
+    <option value="">Select Venue</option>
+
+    {venues.map((v, index) => (
+      <option key={index} value={v}>
+        {v}
+      </option>
+    ))}
+
+    <option value="other">Other (Type Venue)</option>
+  </select>
+
+  {meeting.venue === "other" && (
+    <input
+      type="text"
+      name="venue_custom"
+      placeholder="Enter venue"
+      style={{ ...styles.input, marginTop: "8px" }}
+      value={meeting.venue_custom}
+      onChange={handleChange}
+    />
+  )}
+</div>
 
         {/* Description */}
         <div style={{ ...styles.fieldGroup, gridColumn: "1 / -1" }}>

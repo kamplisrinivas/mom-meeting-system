@@ -1,67 +1,101 @@
 const db = require("../config/db");
-const sendEmail = require("../utils/mailer"); // ✅ FIXED
+const sendEmail = require("../utils/mailer");
 
+
+// ===============================
+// CREATE MEETING
+// ===============================
 exports.createMeeting = async (req, res) => {
   try {
-    console.log("========================================");
-    console.log("📥 NEW MEETING REQUEST STARTED");
 
-    // ✅ 1. AUTH USER
-    const userId = req.user?.id;
-
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized",
-      });
-    }
-
-    // ✅ 2. GET BODY DATA
     const {
       title,
       description,
       meeting_date,
       meeting_time,
       meeting_type,
+      meeting_category,
       platform,
       venue,
       department,
+      chaired_by
     } = req.body;
 
-    if (!title || !meeting_date || !meeting_type || !department) {
+    if (!title || !meeting_date || !meeting_type || !department || !meeting_category) {
       return res.status(400).json({
         success: false,
-        message:
-          "Title, meeting_date, meeting_type and department are required",
+        message: "Title, meeting_date, meeting_type, department and meeting_category are required",
       });
     }
 
-    console.log("👤 Created By:", userId);
-    console.log("📌 Title:", title);
-    console.log("🏢 Department:", department);
+    // ==================================
+    // 🔥 HARD CODED CREATOR
+    // ==================================
 
-    // ✅ 3. INSERT MEETING
+    const creatorId = 566;
+    const creatorName = "RAVINDRA C JOSHI";
+
+    // ==================================
+    // 🔥 SET CONDUCTED BY
+    // ==================================
+
+    let conductedBy = null;
+
+    if (meeting_category === "technical") {
+      conductedBy = 33; // VINOD B S
+    }
+
+    if (meeting_category === "commercial") {
+      conductedBy = 2098; // BRIJESH KUMAR UPADHYAY
+    }
+
+    // ==================================
+    // INSERT MEETING
+    // ==================================
+
     const [meetingResult] = await db.execute(
       `INSERT INTO meetings
-      (title, description, meeting_date, meeting_time, meeting_type, platform, venue, department, created_by, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+      (
+        title,
+        meeting_category,
+        description,
+        meeting_date,
+        meeting_time,
+        meeting_type,
+        platform,
+        venue,
+        chaired_by,
+        created_by,
+        conducted_by,
+        created_by_name,
+        department,
+        status,
+        created_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Scheduled', NOW())`,
       [
         title,
+        meeting_category,
         description || null,
         meeting_date,
         meeting_time || null,
         meeting_type,
         platform || null,
         venue || null,
-        department.trim(),
-        userId,
+        chaired_by || null,
+        creatorId,
+        conductedBy,
+        creatorName,
+        department.trim()
       ]
     );
 
     const meetingId = meetingResult.insertId;
-    console.log("✅ Meeting inserted:", meetingId);
 
-    // ✅ 4. FETCH MANAGEMENT EMPLOYEES
+    // ==================================
+    // GET MANAGEMENT EMPLOYEES
+    // ==================================
+
     const [employees] = await db.execute(
       `SELECT EmployeeName, CompanyEmail, Designation
        FROM employees
@@ -81,17 +115,18 @@ exports.createMeeting = async (req, res) => {
       [department.trim()]
     );
 
-    console.log("👥 Management Found:", employees.length);
-
     if (employees.length === 0) {
       return res.status(201).json({
         success: true,
-        message: "Meeting created (No management emails found)",
+        message: "Meeting created (No management found)",
         meetingId,
       });
     }
 
-    // ✅ 5. FILTER VALID EMAILS
+    // ==================================
+    // FILTER VALID EMAILS
+    // ==================================
+
     const validEmployees = employees.filter(
       (emp) =>
         emp.CompanyEmail &&
@@ -102,31 +137,40 @@ exports.createMeeting = async (req, res) => {
     if (validEmployees.length === 0) {
       return res.status(201).json({
         success: true,
-        message: "Meeting created (No valid email addresses found)",
+        message: "Meeting created (No valid emails)",
         meetingId,
       });
     }
 
-    // ✅ 6. SEND EMAILS (USING sendEmail FUNCTION)
+    // ==================================
+    // SEND EMAILS
+    // ==================================
+
     const emailPromises = validEmployees.map((emp) =>
       sendEmail(
         emp.CompanyEmail,
         `📅 Meeting Notification: ${title}`,
         `
-          <div style="font-family: Arial; padding:20px;">
-            <h3>Meeting Invitation</h3>
-            <p><strong>Department:</strong> ${department}</p>
-            <p><strong>Title:</strong> ${title}</p>
-            <p><strong>Date:</strong> ${meeting_date}</p>
-            <p><strong>Time:</strong> ${meeting_time || "Not specified"}</p>
-            <p><strong>Type:</strong> ${meeting_type}</p>
-            <p><strong>Platform:</strong> ${platform || "-"}</p>
-            <p><strong>Venue:</strong> ${venue || "-"}</p>
-            <br/>
-            <p>${description || ""}</p>
-            <br/>
-            <p>Regards,<br/><strong>Management System</strong></p>
-          </div>
+        <div style="font-family: Arial; padding:20px;">
+          <h2>Meeting Invitation</h2>
+
+          <p><strong>Department:</strong> ${department}</p>
+          <p><strong>Title:</strong> ${title}</p>
+          <p><strong>Category:</strong> ${meeting_category}</p>
+          <p><strong>Date:</strong> ${meeting_date}</p>
+          <p><strong>Time:</strong> ${meeting_time || "Not specified"}</p>
+          <p><strong>Type:</strong> ${meeting_type}</p>
+          <p><strong>Venue:</strong> ${venue || "-"}</p>
+          <p><strong>Chaired By:</strong> ${chaired_by || "-"}</p>
+
+          <br>
+
+          <p>${description || ""}</p>
+
+          <br>
+          <p>Regards</p>
+          <p><strong>Meeting Management System</strong></p>
+        </div>
         `
       )
     );
@@ -135,9 +179,6 @@ exports.createMeeting = async (req, res) => {
 
     const sent = results.filter((r) => r.status === "fulfilled").length;
     const failed = results.filter((r) => r.status === "rejected").length;
-
-    console.log("📊 Mail Summary → Sent:", sent, "Failed:", failed);
-    console.log("========================================");
 
     return res.status(201).json({
       success: true,
@@ -149,27 +190,28 @@ exports.createMeeting = async (req, res) => {
         failed,
       },
     });
-  } catch (error) {
-    console.log("========================================");
-    console.log("❌ SERVER ERROR:", error);
-    console.log("========================================");
 
-    return res.status(500).json({
+  } catch (error) {
+    console.error("❌ Create meeting error:", error);
+
+    res.status(500).json({
       success: false,
       message: "Server Error",
-      error: error.message,
     });
   }
 };
 
+
+// ===============================
+// GET ALL MEETINGS
+// ===============================
 exports.getMeetings = async (req, res) => {
   try {
+
     const [rows] = await db.execute(`
-      SELECT m.*, 
-             e.EmployeeName as created_by_name
-      FROM meetings m
-      LEFT JOIN employees e ON m.created_by = e.EmployeeID
-      ORDER BY m.created_at DESC
+      SELECT *
+      FROM meetings
+      ORDER BY meeting_date DESC
       LIMIT 50
     `);
 
@@ -178,8 +220,10 @@ exports.getMeetings = async (req, res) => {
       data: rows,
       count: rows.length,
     });
+
   } catch (error) {
     console.error("💥 Get meetings error:", error);
+
     res.status(500).json({
       success: false,
       message: "Failed to fetch meetings",
@@ -187,14 +231,17 @@ exports.getMeetings = async (req, res) => {
   }
 };
 
+
+// ===============================
+// GET SINGLE MEETING
+// ===============================
 exports.getMeetingById = async (req, res) => {
   try {
+
     const { id } = req.params;
+
     const [rows] = await db.execute(
-      `SELECT m.*, e.EmployeeName as created_by_name 
-       FROM meetings m
-       LEFT JOIN employees e ON m.created_by = e.EmployeeID
-       WHERE m.id = ?`,
+      `SELECT * FROM meetings WHERE id = ?`,
       [id]
     );
 
@@ -209,8 +256,10 @@ exports.getMeetingById = async (req, res) => {
       success: true,
       data: rows[0],
     });
+
   } catch (error) {
     console.error("💥 Get meeting error:", error);
+
     res.status(500).json({
       success: false,
       message: "Failed to fetch meeting",
@@ -218,9 +267,15 @@ exports.getMeetingById = async (req, res) => {
   }
 };
 
+
+// ===============================
+// UPDATE MEETING
+// ===============================
 exports.updateMeeting = async (req, res) => {
   try {
+
     const { id } = req.params;
+
     const {
       title,
       description,
@@ -230,14 +285,23 @@ exports.updateMeeting = async (req, res) => {
       platform,
       venue,
       department,
-      created_by,
+      status,
+      final_decision
     } = req.body;
 
     const [result] = await db.execute(
       `UPDATE meetings SET 
-       title = ?, description = ?, meeting_date = ?, meeting_time = ?, 
-       meeting_type = ?, platform = ?, venue = ?, department = ?, created_by = ?
-       WHERE id = ?`,
+        title = ?, 
+        description = ?, 
+        meeting_date = ?, 
+        meeting_time = ?, 
+        meeting_type = ?, 
+        platform = ?, 
+        venue = ?, 
+        department = ?,
+        status = ?,
+        final_decision = ?
+      WHERE id = ?`,
       [
         title,
         description || null,
@@ -247,7 +311,8 @@ exports.updateMeeting = async (req, res) => {
         platform || null,
         venue || null,
         department,
-        parseInt(created_by),
+        status || "Scheduled",
+        final_decision || null,
         id,
       ]
     );
@@ -263,8 +328,10 @@ exports.updateMeeting = async (req, res) => {
       success: true,
       message: "Meeting updated successfully",
     });
+
   } catch (error) {
     console.error("💥 Update meeting error:", error);
+
     res.status(500).json({
       success: false,
       message: "Failed to update meeting",
@@ -272,9 +339,15 @@ exports.updateMeeting = async (req, res) => {
   }
 };
 
+
+// ===============================
+// DELETE MEETING
+// ===============================
 exports.deleteMeeting = async (req, res) => {
   try {
+
     const { id } = req.params;
+
     const [result] = await db.execute(
       `DELETE FROM meetings WHERE id = ?`,
       [id]
@@ -291,8 +364,10 @@ exports.deleteMeeting = async (req, res) => {
       success: true,
       message: "Meeting deleted successfully",
     });
+
   } catch (error) {
     console.error("💥 Delete meeting error:", error);
+
     res.status(500).json({
       success: false,
       message: "Failed to delete meeting",

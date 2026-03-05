@@ -21,7 +21,7 @@ export default function MeetingList({ meetings }) {
           <h3>{meeting.title || "Untitled Meeting"}</h3>
           <p>Date & Time: {formatDate(meeting.meeting_date, meeting.meeting_time)}</p>
           <p>Venue: {meeting.venue || "-"}</p>
-          <p>Department: {meeting.department_name || "-"}</p>
+          <p>Department: {meeting.department || "-"}</p>
         </div>
       ))}
     </div>
