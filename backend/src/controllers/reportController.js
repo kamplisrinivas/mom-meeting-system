@@ -56,21 +56,23 @@ exports.getDepartmentReport = async (req,res)=>{
 
 /* ================= USER WORKLOAD ================= */
 
-exports.getUserWorkload = async (req,res)=>{
-  try{
-
+exports.getUserWorkload = async (req, res) => {
+  try {
     const [rows] = await db.query(`
-      SELECT 
-        assigned_to as user_id,
-        COUNT(*) as total_tasks
-      FROM mom_points
-      GROUP BY assigned_to
+      SELECT e.EmployeeName AS employee, COUNT(*) AS task_count
+      FROM mom_points mp
+      JOIN employees e
+        ON FIND_IN_SET(e.EmployeeID, REPLACE(REPLACE(mp.assigned_to,'[',''),']','')) > 0
+      GROUP BY e.EmployeeName
+      ORDER BY task_count DESC
     `);
 
-    res.json({success:true,data:rows});
+    console.log("User Workload Rows:", rows); // debug: check data here
 
-  }catch(err){
-    res.status(500).json({success:false,message:"Report generation failed"});
+    res.json({ success: true, data: rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: "Report generation failed" });
   }
 };
 

@@ -1,309 +1,484 @@
 import React, { useState, useEffect } from "react";
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import '../styles/Report.css';
+import { FaFileExport, FaPrint } from 'react-icons/fa';
 
 const API = "http://localhost:5001/api";
 
 export default function Reports() {
 
-  const [stats, setStats] = useState({
-    totalMeetings: 0,
-    totalTasks: 0,
-    completedTasks: 0,
-    pendingActions: 0,
-    overdueItems: 0,
-    completionRate: 0,
-    departmentStats: [],
-    userWorkload: []
-  });
+const [stats, setStats] = useState({
+totalMeetings:0,
+totalTasks:0,
+completedTasks:0,
+pendingActions:0,
+completionRate:0,
+departmentStats:[],
+userWorkload:[]
+});
 
-  const [meetings,setMeetings] = useState([]);
-  const [loading,setLoading] = useState(true);
+const [meetings,setMeetings] = useState([]);
+const [loading,setLoading] = useState(true);
 
-  const [startDate,setStartDate] = useState("");
-  const [endDate,setEndDate] = useState("");
+const [startDate,setStartDate] = useState("");
+const [endDate,setEndDate] = useState("");
 
-  const token = localStorage.getItem("token");
+const [showExport,setShowExport] = useState(false);
+const [exportType,setExportType] = useState("full");
 
-  const fetchReports = async () => {
+const token = localStorage.getItem("token");
 
-    try{
+const fetchReports = async ()=>{
 
-      setLoading(true);
+try{
 
-      const statsRes = await fetch(
-        `${API}/reports/stats?startDate=${startDate}&endDate=${endDate}`,
-        { headers:{ Authorization:`Bearer ${token}` } }
-      );
+setLoading(true);
 
-      const statsData = await statsRes.json();
+const statsRes = await fetch(
+`${API}/reports/stats?startDate=${startDate}&endDate=${endDate}`,
+{ headers:{ Authorization:`Bearer ${token}` }}
+);
 
-      const meetingRes = await fetch(
-        `${API}/reports/meeting-details?startDate=${startDate}&endDate=${endDate}`,
-        { headers:{ Authorization:`Bearer ${token}` } }
-      );
+const statsData = await statsRes.json();
 
-      const meetingData = await meetingRes.json();
+const meetingRes = await fetch(
+`${API}/reports/meeting-details?startDate=${startDate}&endDate=${endDate}`,
+{ headers:{ Authorization:`Bearer ${token}` }}
+);
 
-      if(statsData.success) setStats(statsData.data || {});
-      if(meetingData.success) setMeetings(meetingData.data || []);
+const meetingData = await meetingRes.json();
 
-    }catch(err){
-      console.error("Report Fetch Error:",err);
-    }
+if(statsData.success) setStats(statsData.data || {});
+if(meetingData.success) setMeetings(meetingData.data || []);
 
-    setLoading(false);
-  };
+}
+catch(err){
+console.error("Report Fetch Error:",err);
+}
 
-  useEffect(()=>{
-    fetchReports();
-  },[]);
+setLoading(false);
+};
 
+useEffect(()=>{
+fetchReports();
+},[]);
 
-  if(loading) return <h2>Loading reports...</h2>;
+if(loading) return <h2>Loading reports...</h2>;
 
-  return(
+return(
 
-  <div style={{padding:"30px"}}>
+<div style={{padding:"30px"}}>
 
-  <h1>📊 Meeting Analytics & Reports</h1>
+<h1>📊 Meeting Analytics & Reports</h1>
 
-  {/* FILTER */}
+{/* FILTER */}
 
-  <div style={{marginBottom:"20px",display:"flex",gap:"10px"}}>
+<div style={{marginBottom:"20px",display:"flex",gap:"10px"}}>
 
-  <input
-  type="date"
-  value={startDate}
-  onChange={(e)=>setStartDate(e.target.value)}
-  />
+<input
+type="date"
+value={startDate}
+onChange={(e)=>setStartDate(e.target.value)}
+/>
 
-  <input
-  type="date"
-  value={endDate}
-  onChange={(e)=>setEndDate(e.target.value)}
-  />
+<input
+type="date"
+value={endDate}
+onChange={(e)=>setEndDate(e.target.value)}
+/>
 
-  <button onClick={fetchReports}>
-  Apply Filters
-  </button>
+<button onClick={fetchReports}>
+Apply Filters
+</button>
 
-  </div>
+</div>
 
-  {/* KPI */}
+{/* KPI */}
 
-  <div style={{display:"flex",gap:"20px",marginBottom:"30px"}}>
+<div style={{display:"flex",gap:"20px",marginBottom:"30px"}}>
 
-  <Card title="Total Meetings" value={stats?.totalMeetings || 0}/>
-  <Card title="Pending Actions" value={stats?.pendingActions || 0}/>
-  <Card title="Completed Actions" value={stats?.completedTasks || 0}/>
-  <Card title="Productivity Score" value={`${stats?.completionRate || 0}%`}/>
+<Card title="Total Meetings" value={stats.totalMeetings}/>
+<Card title="Pending Actions" value={stats.pendingActions}/>
+<Card title="Completed Actions" value={stats.completedTasks}/>
+<Card title="Productivity Score" value={`${stats.completionRate}%`}/>
 
-  </div>
+</div>
 
 
-  {/* DEPARTMENT REPORT */}
+{/* DEPARTMENT REPORT */}
 
-  <h2>Department Wise Meetings</h2>
+<h2>Department Wise Meetings</h2>
 
-  <table border="1" cellPadding="10" width="100%">
+<table border="1" cellPadding="10" width="100%">
 
-  <thead>
-  <tr>
-  <th>Department</th>
-  <th>Meetings</th>
-  </tr>
-  </thead>
+<thead>
+<tr>
+<th>Department</th>
+<th>Meetings</th>
+</tr>
+</thead>
 
-  <tbody>
+<tbody>
 
-  {(stats.departmentStats || []).map((d,i)=>(
-  <tr key={i}>
-  <td>{d.department}</td>
-  <td>{d.meeting_count}</td>
-  </tr>
-  ))}
+{(stats.departmentStats || []).map((d,i)=>(
+<tr key={i}>
+<td>{d.department}</td>
+<td>{d.meeting_count}</td>
+</tr>
+))}
 
-  </tbody>
+</tbody>
 
-  </table>
+</table>
 
 
-  {/* EMPLOYEE WORKLOAD */}
+{/* EMPLOYEE WORKLOAD */}
 
-  <h2 style={{marginTop:"40px"}}>Employee Workload</h2>
+<h2 style={{marginTop:"40px"}}>Employee Workload</h2>
 
-  <table border="1" cellPadding="10" width="100%">
+<table border="1" cellPadding="10" width="100%">
 
-  <thead>
-  <tr>
-  <th>Employee</th>
-  <th>Tasks</th>
-  </tr>
-  </thead>
+<thead>
+<tr>
+<th>Employee</th>
+<th>Tasks</th>
+</tr>
+</thead>
 
-  <tbody>
+<tbody>
 
-  {(stats.userWorkload || []).map((u,i)=>(
-  <tr key={i}>
-  <td>{u.user_id}</td>
-  <td>{u.task_count}</td>
-  </tr>
-  ))}
+{(stats.userWorkload || []).map((u,i)=>(
+<tr key={i}>
+<td>{u.employee}</td>
+<td>{u.task_count}</td>
+</tr>
+))}
 
-  </tbody>
+</tbody>
 
-  </table>
+</table>
 
 
-  {/* MOM REPORT */}
+{/* MOM REPORT */}
 
-  <h2 style={{marginTop:"40px"}}>Meeting MOM Report</h2>
+<h2 style={{marginTop:"40px"}}>Meeting MOM Report</h2>
 
-  <table border="1" cellPadding="10" width="100%">
+<table border="1" cellPadding="10" width="100%">
 
-  <thead>
+<thead>
 
-  <tr>
-  <th>Meeting Title</th>
-  <th>Date</th>
-  <th>Department</th>
-  <th>Agenda</th>
-  <th>Discussion</th>
-  
-  <th>Responsible</th>
-  <th>Deadline</th>
-  <th>Status</th>
-  </tr>
+<tr>
+<th>Meeting Title</th>
+<th>Date</th>
+<th>Department</th>
+<th>Agenda</th>
+<th>Discussion</th>
+<th>Responsible</th>
+<th>Deadline</th>
+<th>Status</th>
+</tr>
 
-  </thead>
+</thead>
 
-  <tbody>
+<tbody>
 
-  {meetings.map((m,i)=>(
+{meetings.map((m,i)=>(
 
-  <tr key={i}>
+<tr key={i}>
 
-  <td>{m.title}</td>
+<td>{m.title}</td>
 
-  <td>
-  {m.meeting_date ? new Date(m.meeting_date).toLocaleDateString() : "-"}
-  </td>
+<td>
+{m.meeting_date ? new Date(m.meeting_date).toLocaleDateString() : "-"}
+</td>
 
-  <td>{m.department}</td>
+<td>{m.department}</td>
 
-  <td>{m.topic || "-"}</td>
+<td>{m.topic || "-"}</td>
 
-  <td>{m.point || "-"}</td>
+<td>{m.point || "-"}</td>
 
-  
+<td>{m.assigned_to || "-"}</td>
 
-  <td>{m.assigned_to || "-"}</td>
+<td>
+{m.timeline ? new Date(m.timeline).toLocaleDateString() : "-"}
+</td>
 
-  <td>
-  {m.timeline ? new Date(m.timeline).toLocaleDateString() : "-"}
-  </td>
+<td>{m.status || "-"}</td>
 
-  <td>{m.status || "-"}</td>
+</tr>
 
-  </tr>
+))}
 
-  ))}
+</tbody>
 
-  </tbody>
+</table>
 
-  </table>
 
+{/* PENDING ACTIONS */}
 
-  {/* ACTION DASHBOARD */}
+<h2 style={{marginTop:"40px"}}>Pending Action Items</h2>
 
-  <h2 style={{marginTop:"40px"}}>Pending Action Items</h2>
+<table border="1" cellPadding="10" width="100%">
 
-  <table border="1" cellPadding="10" width="100%">
+<thead>
 
-  <thead>
+<tr>
+<th>Meeting</th>
+<th>Task</th>
+<th>Responsible</th>
+<th>Deadline</th>
+<th>Status</th>
+</tr>
 
-  <tr>
-  <th>Meeting</th>
-  <th>Task</th>
-  <th>Responsible</th>
-  <th>Deadline</th>
-  <th>Status</th>
-  </tr>
+</thead>
 
-  </thead>
+<tbody>
 
-  <tbody>
+{meetings
+.filter(m=>m.status !== "Done")
+.map((m,i)=>(
 
-  {meetings
-  .filter(m=>m.status !== "Done")
-  .map((m,i)=>(
+<tr key={i}>
 
-  <tr key={i}>
+<td>{m.title}</td>
 
-  <td>{m.title}</td>
+<td>{m.point}</td>
 
-  <td>{m.point}</td>
+<td>{m.assigned_to}</td>
 
-  <td>{m.assigned_to}</td>
+<td>{m.timeline ? new Date(m.timeline).toLocaleDateString() : "-"}</td>
 
-  <td>{m.timeline ? new Date(m.timeline).toLocaleDateString() : "-"}</td>
+<td>{m.status}</td>
 
-  <td>{m.status}</td>
+</tr>
 
-  </tr>
+))}
 
-  ))}
+</tbody>
 
-  </tbody>
+</table>
 
-  </table>
 
+{/* EXPORT BUTTONS */}
 
-  {/* EXPORT BUTTONS */}
+<div style={{marginTop:"40px",display:"flex",gap:"20px"}}>
 
-  <div style={{marginTop:"40px",display:"flex",gap:"20px"}}>
+<button onClick={()=>window.print()}>
+<FaPrint/> Print Report
+</button>
 
-  <button onClick={()=>window.print()}>
-  Print Report
-  </button>
+<button onClick={()=>setShowExport(true)}>
+<FaFileExport/> Export Excel
+</button>
 
-  <button onClick={()=>exportExcel()}>
-  Export Excel
-  </button>
+<button onClick={()=>exportPDF(stats,meetings)}>
+<FaFileExport/> Export PDF
+</button>
 
-  <button onClick={()=>exportPDF()}>
-  Export PDF
-  </button>
+</div>
 
-  </div>
 
-  </div>
+{/* EXPORT POPUP */}
 
-  );
+{showExport && (
 
+<div style={{
+position:"fixed",
+top:"0",
+left:"0",
+width:"100%",
+height:"100%",
+background:"rgba(0,0,0,0.4)",
+display:"flex",
+alignItems:"center",
+justifyContent:"center"
+}}>
+
+<div style={{
+background:"white",
+padding:"30px",
+borderRadius:"10px",
+width:"350px"
+}}>
+
+<h3>Select Report to Export</h3>
+
+<select
+value={exportType}
+onChange={(e)=>setExportType(e.target.value)}
+style={{width:"100%",padding:"10px",marginBottom:"20px"}}
+>
+
+<option value="full">Full Report</option>
+<option value="department">Department Meetings</option>
+<option value="workload">Employee Workload</option>
+<option value="mom">MOM Report</option>
+<option value="pending">Pending Actions</option>
+
+</select>
+
+<button
+onClick={()=>{
+exportExcel(exportType,stats,meetings);
+setShowExport(false);
+}}
+style={{marginRight:"10px"}}
+>
+Export
+</button>
+
+<button onClick={()=>setShowExport(false)}>
+Cancel
+</button>
+
+</div>
+
+</div>
+
+)}
+
+</div>
+
+);
 }
 
 
-const Card = ({title,value}) => (
+/* KPI CARD */
 
+const Card = ({title,value})=>(
 <div style={{
 padding:"20px",
 background:"#f3f4f6",
 borderRadius:"10px",
 width:"200px"
 }}>
-
 <h3>{title}</h3>
 <h2>{value}</h2>
-
 </div>
-
 );
 
 
-function exportExcel(){
-alert("Excel export feature can be added using SheetJS");
+/* EXCEL EXPORT */
+
+function exportExcel(type,stats,meetings){
+
+let data=[];
+
+if(type==="department"){
+
+data=(stats.departmentStats || []).map(d=>({
+Department:d.department,
+Meetings:d.meeting_count
+}));
+
 }
 
-function exportPDF(){
-alert("PDF export feature can be added using jsPDF");
+else if(type==="workload"){
+
+data=(stats.userWorkload || []).map(u=>({
+Employee:u.employee,
+Tasks:u.task_count
+}));
+
+}
+
+else if(type==="pending"){
+
+data=meetings
+.filter(m=>m.status !== "Done")
+.map(m=>({
+Meeting:m.title,
+Task:m.point,
+Responsible:m.assigned_to,
+Deadline:m.timeline,
+Status:m.status
+}));
+
+}
+
+else{
+
+data=meetings.map(m=>({
+Meeting:m.title,
+Date:m.meeting_date,
+Department:m.department,
+Discussion:m.point,
+Responsible:m.assigned_to,
+Deadline:m.timeline,
+Status:m.status
+}));
+
+}
+
+const worksheet=XLSX.utils.json_to_sheet(data);
+const workbook=XLSX.utils.book_new();
+
+XLSX.utils.book_append_sheet(workbook,worksheet,"Report");
+
+XLSX.writeFile(workbook,"Meeting_Report.xlsx");
+
+}
+
+
+/* PDF EXPORT */
+
+function exportPDF(stats,meetings){
+
+const doc=new jsPDF();
+
+doc.setFontSize(18);
+doc.text("Meeting Analytics Report",14,20);
+
+doc.setFontSize(12);
+doc.text(`Total Meetings: ${stats.totalMeetings}`,14,35);
+doc.text(`Total Tasks: ${stats.totalTasks}`,14,42);
+doc.text(`Completed Tasks: ${stats.completedTasks}`,14,49);
+doc.text(`Pending Actions: ${stats.pendingActions}`,14,56);
+doc.text(`Productivity Score: ${stats.completionRate}%`,14,63);
+
+autoTable(doc,{
+startY:75,
+head:[["Department","Meetings"]],
+body:(stats.departmentStats || []).map(d=>[
+d.department,
+d.meeting_count
+])
+});
+
+autoTable(doc,{
+startY:doc.lastAutoTable.finalY+10,
+head:[["Employee","Tasks"]],
+body:(stats.userWorkload || []).map(u=>[
+u.employee,
+u.task_count
+])
+});
+
+autoTable(doc,{
+startY:doc.lastAutoTable.finalY+10,
+head:[[
+"Meeting",
+"Date",
+"Department",
+"Discussion",
+"Responsible",
+"Deadline",
+"Status"
+]],
+body:meetings.map(m=>[
+m.title,
+m.meeting_date ? new Date(m.meeting_date).toLocaleDateString() : "-",
+m.department,
+m.point || "-",
+m.assigned_to || "-",
+m.timeline ? new Date(m.timeline).toLocaleDateString() : "-",
+m.status || "-"
+])
+});
+
+doc.save("Meeting_Report.pdf");
+
 }

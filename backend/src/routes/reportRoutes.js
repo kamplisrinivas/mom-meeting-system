@@ -13,7 +13,7 @@ router.get("/summary", reportController.getSummaryReport);
 router.get("/meetings", reportController.getMeetingsReport);
 
 /* ================= PROTECTED REPORT ROUTES (Token required) ================= */
-router.get("/stats", authMiddleware, async (req, res) => {
+router.get("/stats",  async (req, res) => {
   try {
     const [[totalMeetings]] = await db.query(`SELECT COUNT(*) as count FROM meetings`);
     const [[totalTasks]] = await db.query(`SELECT COUNT(*) as count FROM mom_points`);
@@ -39,10 +39,13 @@ router.get("/stats", authMiddleware, async (req, res) => {
       GROUP BY department
     `);
     const [userWorkload] = await db.query(`
-      SELECT assigned_to user_id, COUNT(*) task_count
-      FROM mom_points
-      GROUP BY assigned_to
-    `);
+  SELECT e.EmployeeName AS employee, COUNT(*) AS task_count
+  FROM mom_points mp
+  JOIN employees e
+    ON FIND_IN_SET(e.EmployeeID, REPLACE(REPLACE(mp.assigned_to,'[',''),']','')) > 0
+  GROUP BY e.EmployeeName
+  ORDER BY task_count DESC
+`);
 
     const completionRate = totalTasks.count === 0
       ? 0
