@@ -25,10 +25,18 @@ const [loading,setLoading] = useState(true);
 const [startDate,setStartDate] = useState("");
 const [endDate,setEndDate] = useState("");
 
+/* NEW FILTERS */
+
+const [departmentFilter,setDepartmentFilter] = useState("");
+const [meetingFilter,setMeetingFilter] = useState("");
+const [titleFilter,setTitleFilter] = useState("");
+
 const [showExport,setShowExport] = useState(false);
 const [exportType,setExportType] = useState("full");
 
 const token = localStorage.getItem("token");
+
+/* FETCH REPORT DATA */
 
 const fetchReports = async ()=>{
 
@@ -65,6 +73,22 @@ useEffect(()=>{
 fetchReports();
 },[]);
 
+
+/* FILTER LOGIC */
+
+const filteredMeetings = meetings.filter(m => {
+
+return (
+
+(!departmentFilter || m.department === departmentFilter) &&
+(!meetingFilter || m.title === meetingFilter) &&
+(!titleFilter || m.title.toLowerCase().includes(titleFilter.toLowerCase()))
+
+);
+
+});
+
+
 if(loading) return <h2>Loading reports...</h2>;
 
 return(
@@ -73,9 +97,9 @@ return(
 
 <h1>📊 Meeting Analytics & Reports</h1>
 
-{/* FILTER */}
+{/* FILTER SECTION */}
 
-<div style={{marginBottom:"20px",display:"flex",gap:"10px"}}>
+<div style={{display:"flex",gap:"10px",marginBottom:"20px",flexWrap:"wrap"}}>
 
 <input
 type="date"
@@ -89,13 +113,41 @@ value={endDate}
 onChange={(e)=>setEndDate(e.target.value)}
 />
 
+<select
+value={departmentFilter}
+onChange={(e)=>setDepartmentFilter(e.target.value)}
+>
+<option value="">All Departments</option>
+{[...new Set(meetings.map(m=>m.department))].map((d,i)=>(
+<option key={i} value={d}>{d}</option>
+))}
+</select>
+
+<select
+value={meetingFilter}
+onChange={(e)=>setMeetingFilter(e.target.value)}
+>
+<option value="">All Meetings</option>
+{[...new Set(meetings.map(m=>m.title))].map((t,i)=>(
+<option key={i} value={t}>{t}</option>
+))}
+</select>
+
+<input
+type="text"
+placeholder="Search by title"
+value={titleFilter}
+onChange={(e)=>setTitleFilter(e.target.value)}
+/>
+
 <button onClick={fetchReports}>
 Apply Filters
 </button>
 
 </div>
 
-{/* KPI */}
+
+{/* KPI CARDS */}
 
 <div style={{display:"flex",gap:"20px",marginBottom:"30px"}}>
 
@@ -184,7 +236,7 @@ Apply Filters
 
 <tbody>
 
-{meetings.map((m,i)=>(
+{filteredMeetings.map((m,i)=>(
 
 <tr key={i}>
 
@@ -217,7 +269,7 @@ Apply Filters
 </table>
 
 
-{/* PENDING ACTIONS */}
+{/* PENDING ACTION ITEMS */}
 
 <h2 style={{marginTop:"40px"}}>Pending Action Items</h2>
 
@@ -237,7 +289,7 @@ Apply Filters
 
 <tbody>
 
-{meetings
+{filteredMeetings
 .filter(m=>m.status !== "Done")
 .map((m,i)=>(
 
@@ -274,71 +326,11 @@ Apply Filters
 <FaFileExport/> Export Excel
 </button>
 
-<button onClick={()=>exportPDF(stats,meetings)}>
+<button onClick={()=>exportPDF(stats,filteredMeetings)}>
 <FaFileExport/> Export PDF
 </button>
 
 </div>
-
-
-{/* EXPORT POPUP */}
-
-{showExport && (
-
-<div style={{
-position:"fixed",
-top:"0",
-left:"0",
-width:"100%",
-height:"100%",
-background:"rgba(0,0,0,0.4)",
-display:"flex",
-alignItems:"center",
-justifyContent:"center"
-}}>
-
-<div style={{
-background:"white",
-padding:"30px",
-borderRadius:"10px",
-width:"350px"
-}}>
-
-<h3>Select Report to Export</h3>
-
-<select
-value={exportType}
-onChange={(e)=>setExportType(e.target.value)}
-style={{width:"100%",padding:"10px",marginBottom:"20px"}}
->
-
-<option value="full">Full Report</option>
-<option value="department">Department Meetings</option>
-<option value="workload">Employee Workload</option>
-<option value="mom">MOM Report</option>
-<option value="pending">Pending Actions</option>
-
-</select>
-
-<button
-onClick={()=>{
-exportExcel(exportType,stats,meetings);
-setShowExport(false);
-}}
-style={{marginRight:"10px"}}
->
-Export
-</button>
-
-<button onClick={()=>setShowExport(false)}>
-Cancel
-</button>
-
-</div>
-
-</div>
-
-)}
 
 </div>
 
@@ -367,40 +359,6 @@ function exportExcel(type,stats,meetings){
 
 let data=[];
 
-if(type==="department"){
-
-data=(stats.departmentStats || []).map(d=>({
-Department:d.department,
-Meetings:d.meeting_count
-}));
-
-}
-
-else if(type==="workload"){
-
-data=(stats.userWorkload || []).map(u=>({
-Employee:u.employee,
-Tasks:u.task_count
-}));
-
-}
-
-else if(type==="pending"){
-
-data=meetings
-.filter(m=>m.status !== "Done")
-.map(m=>({
-Meeting:m.title,
-Task:m.point,
-Responsible:m.assigned_to,
-Deadline:m.timeline,
-Status:m.status
-}));
-
-}
-
-else{
-
 data=meetings.map(m=>({
 Meeting:m.title,
 Date:m.meeting_date,
@@ -410,8 +368,6 @@ Responsible:m.assigned_to,
 Deadline:m.timeline,
 Status:m.status
 }));
-
-}
 
 const worksheet=XLSX.utils.json_to_sheet(data);
 const workbook=XLSX.utils.book_new();
@@ -432,33 +388,8 @@ const doc=new jsPDF();
 doc.setFontSize(18);
 doc.text("Meeting Analytics Report",14,20);
 
-doc.setFontSize(12);
-doc.text(`Total Meetings: ${stats.totalMeetings}`,14,35);
-doc.text(`Total Tasks: ${stats.totalTasks}`,14,42);
-doc.text(`Completed Tasks: ${stats.completedTasks}`,14,49);
-doc.text(`Pending Actions: ${stats.pendingActions}`,14,56);
-doc.text(`Productivity Score: ${stats.completionRate}%`,14,63);
-
 autoTable(doc,{
-startY:75,
-head:[["Department","Meetings"]],
-body:(stats.departmentStats || []).map(d=>[
-d.department,
-d.meeting_count
-])
-});
-
-autoTable(doc,{
-startY:doc.lastAutoTable.finalY+10,
-head:[["Employee","Tasks"]],
-body:(stats.userWorkload || []).map(u=>[
-u.employee,
-u.task_count
-])
-});
-
-autoTable(doc,{
-startY:doc.lastAutoTable.finalY+10,
+startY:40,
 head:[[
 "Meeting",
 "Date",
