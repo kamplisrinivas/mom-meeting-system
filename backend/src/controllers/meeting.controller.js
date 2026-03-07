@@ -147,33 +147,74 @@ exports.createMeeting = async (req, res) => {
     // ==================================
 
     const emailPromises = validEmployees.map((emp) =>
-      sendEmail(
-        emp.CompanyEmail,
-        `📅 Meeting Notification: ${title}`,
-        `
-        <div style="font-family: Arial; padding:20px;">
-          <h2>Meeting Invitation</h2>
+  sendEmail(
+    emp.CompanyEmail,
+    ` Meeting Notification: ${title}`,
+    `
+            <div style="background:#f2f2f2;padding:30px;font-family:Arial,sans-serif;">
+              
+              <div style="max-width:650px;margin:auto;background:#ffffff;border-radius:10px;border:2px solid #a30000;overflow:hidden;">
+                
+                <!-- Header -->
+                <div style="background:#a30000;color:white;padding:15px 20px;">
+          <table width="100%">
+            <tr>
 
-          <p><strong>Department:</strong> ${department}</p>
+              <td style="width:60px;">
+                <img src="cid:slrmlogo" style="width:50px;height:auto;" />
+              </td>
+
+              <td style="text-align:center;">
+                <h2 style="margin:0;">📌 Meeting Invitation</h2>
+                <p style="margin:5px 0 0 0;font-size:14px;">
+                  Scheduled by: ${creatorName || "Management"}
+                </p>
+              </td>
+
+              <td style="width:60px;"></td>
+
+            </tr>
+          </table>
+        </div>
+
+        <!-- Body -->
+        <div style="padding:25px;color:#333;font-size:14px;line-height:1.6;">
+          
           <p><strong>Title:</strong> ${title}</p>
-          <p><strong>Category:</strong> ${meeting_category}</p>
           <p><strong>Date:</strong> ${meeting_date}</p>
           <p><strong>Time:</strong> ${meeting_time || "Not specified"}</p>
           <p><strong>Type:</strong> ${meeting_type}</p>
-          <p><strong>Venue:</strong> ${venue || "-"}</p>
-          <p><strong>Chaired By:</strong> ${chaired_by || "-"}</p>
+          <p><strong>Platform / Venue:</strong> ${venue || "-"}</p>
+          <p><strong>Department:</strong> ${department}</p>
 
           <br>
 
-          <p>${description || ""}</p>
+          <p><strong>Description:</strong></p>
 
-          <br>
-          <p>Regards</p>
-          <p><strong>Meeting Management System</strong></p>
+          <div style="
+            background:#f4f4f4;
+            padding:15px;
+            border-left:5px solid #a30000;
+            border-radius:6px;
+            margin-top:5px;
+          ">
+            ${description || "No description provided."}
+          </div>
+
         </div>
-        `
-      )
-    );
+
+        <!-- Footer -->
+        <div style="text-align:center;font-size:12px;color:#777;padding:15px;background:#fafafa;">
+          This is an automated invitation from 
+          <strong>SLR Metaliks MOM System</strong>.
+        </div>
+
+      </div>
+
+    </div>
+    `
+  )
+);
 
     const results = await Promise.allSettled(emailPromises);
 
