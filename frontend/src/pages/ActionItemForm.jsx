@@ -7,7 +7,6 @@ export default function MomPointForm({ meetingId, token }) {
   const [pointText, setPointText] = useState("");
   const [momPoints, setMomPoints] = useState([]);
 
-  // Fetch MOM points + their action items
   const fetchMomPoints = async () => {
     try {
       const res = await fetch(`${API_URL}/api/mom/meeting/${meetingId}`, {
@@ -35,7 +34,6 @@ export default function MomPointForm({ meetingId, token }) {
     fetchMomPoints();
   }, [meetingId]);
 
-  // Add new MOM point
   const addMomPoint = async () => {
     if (!pointText.trim()) return;
     try {
@@ -55,16 +53,16 @@ export default function MomPointForm({ meetingId, token }) {
   };
 
   return (
-    <div style={{ marginTop: "20px" }}>
-      {/* Add MOM Point */}
+    <div style={containerLayout}>
+      {/* Add MOM Point Input Section */}
       <div style={addMomBox}>
         <input
-          placeholder="Add MOM point"
+          placeholder="Enter discussion point..."
           value={pointText}
           onChange={(e) => setPointText(e.target.value)}
           style={input}
         />
-        <button onClick={addMomPoint} style={button}>
+        <button onClick={addMomPoint} style={mainButton}>
           Add MOM Point
         </button>
       </div>
@@ -74,10 +72,9 @@ export default function MomPointForm({ meetingId, token }) {
         {momPoints.map((p) => (
           <div key={p.id} style={momCard}>
             <div style={momText}>
-              <strong>- {p.point}</strong>
+              <strong>• {p.point}</strong>
             </div>
 
-            {/* Toggleable Action Form */}
             <ToggleActionForm
               momPointId={p.id}
               token={token}
@@ -91,39 +88,42 @@ export default function MomPointForm({ meetingId, token }) {
   );
 }
 
-// Toggleable Action Form per MOM point
 function ToggleActionForm({ momPointId, token, refreshMeetings, actionItems }) {
   const [showForm, setShowForm] = useState(false);
 
   return (
-    <div style={{ marginLeft: "20px" }}>
-      <button style={toggleButton} onClick={() => setShowForm(!showForm)}>
-        {showForm ? "Hide Actions" : "Add Action"}
+    <div style={{ marginLeft: "15px", borderLeft: "2px solid #cbd5e1", paddingLeft: "15px" }}>
+      <button 
+        style={{...toggleButton, background: showForm ? "#64748b" : "#3b82f6"}} 
+        onClick={() => setShowForm(!showForm)}
+      >
+        {showForm ? "✕ Close" : "+ Add Action Item"}
       </button>
 
       {showForm && (
-        <div style={{ marginTop: "10px" }}>
+        <div style={actionFormWrapper}>
           <ActionItemForm
             meetingId={momPointId}
             token={token}
             refreshMeetings={() => {
               refreshMeetings();
-              setShowForm(false); // ✅ collapse after add
+              setShowForm(false);
             }}
             actionItems={actionItems}
           />
         </div>
       )}
 
-      {/* Existing action items */}
       <div style={{ marginTop: "10px" }}>
         {actionItems.map((a) => (
           <div key={a.id} style={actionItemCard}>
-            <strong>{a.description}</strong>
+            <div style={{ fontWeight: "600", color: "#1e293b" }}>{a.description}</div>
             <div style={actionDetails}>
-              Responsible: {a.assigned_to || "N/A"} | Target:{" "}
-              {a.due_date ? new Date(a.due_date).toLocaleDateString() : "N/A"} | Status:{" "}
-              {a.status}
+              <span>👤 {a.assigned_to || "Unassigned"}</span>
+              <span style={{ margin: "0 10px" }}>|</span>
+              <span>📅 {a.due_date ? new Date(a.due_date).toLocaleDateString() : "No Date"}</span>
+              <span style={{ margin: "0 10px" }}>|</span>
+              <span style={statusBadge}>{a.status}</span>
             </div>
           </div>
         ))}
@@ -132,39 +132,98 @@ function ToggleActionForm({ momPointId, token, refreshMeetings, actionItems }) {
   );
 }
 
-/* ================= STYLES ================= */
-const addMomBox = { display: "flex", gap: "10px", marginBottom: "15px" };
-const input = { flex: 1, padding: "8px", borderRadius: "4px", border: "1px solid #ccc" };
-const button = {
-  padding: "8px 15px",
-  background: "#003366",
-  color: "white",
-  border: "none",
-  borderRadius: "4px",
-  cursor: "pointer",
+/* ================= UPDATED LIGHT BLUE STYLES ================= */
+
+const containerLayout = {
+  marginTop: "20px",
+  fontFamily: "sans-serif",
+  color: "#334155"
 };
-const toggleButton = {
-  padding: "5px 10px",
-  background: "#0066cc",
-  color: "white",
-  border: "none",
-  borderRadius: "4px",
-  cursor: "pointer",
-  fontSize: "13px",
-};
-const momCard = {
-  background: "#f9f9f9",
+
+const addMomBox = { 
+  display: "flex", 
+  gap: "10px", 
+  marginBottom: "20px",
   padding: "15px",
+  background: "#f0f7ff", // Very light blue
+  borderRadius: "8px",
+  border: "1px solid #dbeafe"
+};
+
+const input = { 
+  flex: 1, 
+  padding: "10px", 
+  borderRadius: "6px", 
+  border: "1px solid #bfdbfe",
+  outline: "none"
+};
+
+const mainButton = {
+  padding: "10px 20px",
+  background: "#2563eb", // Bright blue
+  color: "white",
+  border: "none",
   borderRadius: "6px",
-  marginBottom: "12px",
-  borderLeft: "4px solid #003366",
+  cursor: "pointer",
+  fontWeight: "600"
 };
-const momText = { fontSize: "15px", marginBottom: "10px" };
-const actionItemCard = {
-  background: "#fff",
-  padding: "8px",
+
+const momCard = {
+  background: "#ffffff",
+  padding: "20px",
+  borderRadius: "10px",
+  marginBottom: "15px",
+  border: "1px solid #e2e8f0",
+  boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)"
+};
+
+const momText = { 
+  fontSize: "16px", 
+  marginBottom: "15px", 
+  color: "#1e293b" 
+};
+
+const toggleButton = {
+  padding: "6px 12px",
+  color: "white",
+  border: "none",
   borderRadius: "4px",
-  marginBottom: "6px",
-  border: "1px solid #ddd",
+  cursor: "pointer",
+  fontSize: "12px",
+  marginBottom: "10px",
+  transition: "background 0.2s"
 };
-const actionDetails = { fontSize: "13px", color: "#555" };
+
+const actionFormWrapper = {
+  marginTop: "10px",
+  padding: "15px",
+  background: "#f8fafc", // Lightest gray-blue
+  borderRadius: "8px",
+  border: "1px dashed #3b82f6" 
+};
+
+const actionItemCard = {
+  background: "#eff6ff", // Light blue background for items
+  padding: "12px",
+  borderRadius: "6px",
+  marginBottom: "8px",
+  borderLeft: "4px solid #3b82f6"
+};
+
+const actionDetails = { 
+  fontSize: "13px", 
+  color: "#64748b", 
+  marginTop: "5px",
+  display: "flex",
+  alignItems: "center"
+};
+
+const statusBadge = {
+  background: "#dcfce7",
+  color: "#166534",
+  padding: "2px 8px",
+  borderRadius: "12px",
+  fontSize: "11px",
+  fontWeight: "bold",
+  textTransform: "uppercase"
+};
