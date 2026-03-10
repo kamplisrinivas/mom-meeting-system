@@ -6,6 +6,8 @@ const meetingController = require("../controllers/meeting.controller");
 console.log("meetingController loaded:", Object.keys(meetingController));
 
 // ✅ ALL ROUTES - NO CONDUCTED BY
+router.post("/department-employees",  meetingController.getDepartmentEmployees);
+
 router.get("/", authMiddleware, meetingController.getMeetings);
 router.post("/", authMiddleware, meetingController.createMeeting);
 router.get("/:id", authMiddleware, meetingController.getMeetingById);

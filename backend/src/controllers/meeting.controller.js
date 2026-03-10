@@ -243,6 +243,46 @@ exports.createMeeting = async (req, res) => {
 };
 
 
+exports.getDepartmentEmployees = async (req, res) => {
+
+  try {
+
+    const { departments } = req.body;
+
+    if (!departments || departments.length === 0) {
+      return res.json({
+        success: true,
+        employees: []
+      });
+    }
+
+    const placeholders = departments.map(() => "?").join(",");
+
+    const [employees] = await db.execute(
+      `SELECT EmployeeID, EmployeeName, CompanyEmail, Designation, Department
+       FROM employees
+       WHERE Department IN (${placeholders})`,
+      departments
+    );
+
+    res.json({
+      success: true,
+      employees
+    });
+
+  } catch (error) {
+
+    console.error(error);
+
+    res.status(500).json({
+      success:false
+    });
+
+  }
+
+};
+
+
 // ===============================
 // GET ALL MEETINGS
 // ===============================
