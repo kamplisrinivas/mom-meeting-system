@@ -1,5 +1,6 @@
 require("dotenv").config();
 const nodemailer = require("nodemailer");
+const path = require("path");
 
 const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST || "smtp.rediffmailpro.com",
@@ -31,14 +32,26 @@ transporter.verify(function (error) {
 const sendEmail = async (to, subject, html) => {
   try {
     const info = await transporter.sendMail({
-      from: `"SLRM MIS ERP" <${process.env.EMAIL_FROM}>`,
+      from: `"SLRM Alerts" <${process.env.EMAIL_FROM}>`,
       to,
       subject,
       html,
+
+      attachments: [
+        {
+          filename: "logo.jpg",
+          path: path.join(
+            __dirname,
+            "../../frontend/src/image/logo.jpg"
+          ), // adjust path if needed
+          cid: "slrmlogo", // used inside HTML
+        },
+      ],
     });
 
     console.log("✅ Email sent:", info.response);
     return info;
+
   } catch (error) {
     console.error("❌ Email failed:", error.message);
     throw error;
