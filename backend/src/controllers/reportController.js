@@ -6,34 +6,61 @@ const db = require("../config/db");
 /* ================= MEETING REPORT ================= */
 exports.getMeetingsReport = async (req, res) => {
   try {
+    const { startDate, endDate, department, category, title } = req.query;
 
-    const [rows] = await db.query(`
-SELECT 
-  m.id,
-  m.title,
-  m.meeting_date,
-  m.department,
-  mp.topic,
-  mp.point,
-  mp.decisions,
-  mp.timeline,
-  mp.status,
-  GROUP_CONCAT(e.EmployeeName SEPARATOR ', ') as assigned_to_names
-FROM meetings m
-LEFT JOIN mom_points mp ON m.id = mp.meeting_id
-LEFT JOIN employees e ON FIND_IN_SET(e.EmployeeID, REPLACE(REPLACE(mp.assigned_to,'[',''),']',''))
-GROUP BY m.id, mp.id
-ORDER BY m.meeting_date DESC
-`);
+    let query = `
+      SELECT 
+        m.id, 
+        m.title, 
+        m.meeting_date, 
+        m.department, 
+        m.meeting_category, 
+        m.meeting_type,
+        m.venue,
+        m.chaired_by,
+        cond.EmployeeName as conducted_by_name, -- Added to show Vinod/Brijesh
+        mp.point, 
+        mp.status,
+        GROUP_CONCAT(e.EmployeeName SEPARATOR ', ') as assigned_to_names
+      FROM meetings m
+      LEFT JOIN mom_points mp ON m.id = mp.meeting_id
+      LEFT JOIN employees e ON FIND_IN_SET(e.EmployeeID, REPLACE(REPLACE(mp.assigned_to,'[',''),']',''))
+      LEFT JOIN employees cond ON m.conducted_by = cond.EmployeeID -- Join for conductor
+      WHERE 1=1
+    `;
 
+    const params = [];
+
+    if (startDate && endDate) {
+      query += " AND m.meeting_date BETWEEN ? AND ?";
+      params.push(startDate, endDate);
+    }
+    if (department) {
+      query += " AND m.department = ?";
+      params.push(department);
+    }
+    if (category) {
+      query += " AND m.meeting_category = ?";
+      params.push(category);
+    }
+    if (title) {
+      query += " AND m.title LIKE ?";
+      params.push(`%${title}%`);
+    }
+
+    // Group by meeting and point, then Sort by Dept then Category
+    query += ` 
+      GROUP BY m.id, mp.id 
+      ORDER BY m.department ASC, m.meeting_category ASC, m.meeting_date DESC
+    `;
+
+    const [rows] = await db.query(query, params);
     res.json({ success: true, data: rows });
-
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success:false,message:"Report generation failed"});
+    console.error("Report Error:", err);
+    res.status(500).json({ success: false, message: "Report generation failed" });
   }
 };
-
 /* ================= DEPARTMENT REPORT ================= */
 
 exports.getDepartmentReport = async (req,res)=>{

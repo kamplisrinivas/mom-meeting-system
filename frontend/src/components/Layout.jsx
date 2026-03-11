@@ -1,8 +1,9 @@
-import React from 'react';
-import { Outlet, useNavigate, Link } from 'react-router-dom';  // 👈 ADD Link import
+import React, { useState } from 'react';
+import { Outlet, useNavigate, Link, useLocation } from 'react-router-dom';
+import logoImg from "../assets/img/company-logo.png"; 
+import sidebarBg from "../assets/img/create.jpg"; 
 
 const Layout = ({ onLogout }) => {
-  const token = localStorage.getItem("token");
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -12,10 +13,17 @@ const Layout = ({ onLogout }) => {
 
   return (
     <div style={styles.appContainer}>
-      {/* TOP HEADER */}
+      {/* HEADER */}
       <header style={styles.header}>
         <div style={styles.logoSection}>
-          <div style={styles.logo}>🚀</div>  {/* 👈 Logo placeholder */}
+          <div style={styles.logoWrapper}>
+            <img 
+              src={logoImg} 
+              alt="Logo" 
+              style={styles.logoImage} 
+              onError={(e) => { e.target.src = "https://via.placeholder.com/40"; }}
+            />
+          </div>
           <span style={styles.logoText}>MOM Dashboard</span>
         </div>
         <button style={styles.logoutBtn} onClick={handleLogout}>
@@ -24,18 +32,18 @@ const Layout = ({ onLogout }) => {
       </header>
 
       <div style={styles.mainContainer}>
-        {/* SIDEBAR */}
+        {/* SIDEBAR WITH IMAGE BACKGROUND */}
         <aside style={styles.sidebar}>
           <nav style={styles.nav}>
-            <SidebarLink to="/dashboard" label=" Dashboard" icon="📊" />
-            <SidebarLink to="/meetings/create" label=" Create Meeting" icon="➕" />
-            <SidebarLink to="/meetings" label=" All Meetings" icon="📋" />
-            <SidebarLink to="/employee-tasks" label=" My Tasks" icon="🎯" />  {/* 👈 FIXED PATH */}
-            <SidebarLink to="/reports" label=" Reports" icon="📈"  />
+            <SidebarLink to="/dashboard" label="Dashboard" icon="📊" />
+            <SidebarLink to="/meetings/create" label="Create Meeting" icon="➕" />
+            <SidebarLink to="/meetings" label="All Meetings" icon="📋" />
+            <SidebarLink to="/employee-tasks" label="My Tasks" icon="🎯" />
+            <SidebarLink to="/reports" label="Reports" icon="📈" />
           </nav>
         </aside>
 
-        {/* MAIN CONTENT */}
+        {/* MAIN CONTENT AREA */}
         <main style={styles.mainContent}>
           <Outlet />
         </main>
@@ -44,42 +52,41 @@ const Layout = ({ onLogout }) => {
   );
 };
 
-// ✅ FIXED SidebarLink - Uses proper Link component
-const SidebarLink = ({ to, label, icon, disabled = false }) => {
+// SidebarLink Component handling Hover and Transparent Active states
+const SidebarLink = ({ to, label, icon }) => {
+  const [isHovered, setIsHovered] = useState(false);
+  const location = useLocation();
+  const isActive = location.pathname === to;
+
   return (
     <Link 
-      to={disabled ? '#' : to}
+      to={to}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       style={{
         ...styles.sidebarLink,
-        ...(disabled && styles.sidebarLinkDisabled),
-        cursor: disabled ? 'not-allowed' : 'pointer'
-      }}
-      onClick={(e) => {
-        if (disabled) e.preventDefault();
+        ...(isHovered && styles.sidebarLinkHover),
+        ...(isActive && styles.sidebarLinkActive),
       }}
     >
-      <span>{icon}</span>
-      <span>{label}</span>
+      <span style={styles.icon}>{icon}</span>
+      <span style={styles.linkLabel}>{label}</span>
+      {isActive && <span style={styles.activeIndicator}>•</span>}
     </Link>
   );
 };
 
-export default Layout;
-
-// ==================== COMPLETE STYLES ====================
+// ==================== STYLES ====================
 const styles = {
-  // App Layout
   appContainer: {
     minHeight: '100vh',
-    background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif',
+    background: '#f8fafc',
+    fontFamily: 'Inter, -apple-system, sans-serif',
   },
-
-  // Header
   header: {
     background: 'white',
-    padding: '1.5rem 2rem',
-    boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+    padding: '0.8rem 2.5rem',
+    boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -88,124 +95,85 @@ const styles = {
     zIndex: 100,
     borderBottom: '1px solid #e2e8f0',
   },
-  logoSection: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '1rem',
-  },
-  logo: {
-    width: '42px',
-    height: '42px',
-    borderRadius: '10px',
-    background: 'linear-gradient(135deg, #667eea, #764ba2)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: '1.2rem',
-  },
-  logoText: {
-    fontSize: '1.6rem',
-    fontWeight: 800,
-    color: '#1a1a1a',
-    background: 'linear-gradient(135deg, #667eea, #764ba2)',
-    WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent',
-    backgroundClip: 'text',
+  logoSection: { display: 'flex', alignItems: 'center', gap: '12px' },
+  logoWrapper: { height: '40px', display: 'flex', alignItems: 'center' },
+  logoImage: { height: '100%', maxWidth: '150px', objectFit: 'contain' },
+  logoText: { 
+    fontSize: '1.3rem', 
+    fontWeight: 800, 
+    color: '#1e293b',
+    letterSpacing: '-0.5px'
   },
   logoutBtn: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-    background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+    background: '#ef4444',
     color: 'white',
     border: 'none',
-    padding: '0.875rem 1.75rem',
-    borderRadius: '12px',
-    fontWeight: 600,
+    padding: '10px 18px',
+    borderRadius: '10px',
     cursor: 'pointer',
-    fontSize: '0.95rem',
-    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-    boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)',
+    fontWeight: '600',
+    fontSize: '0.9rem',
+    boxShadow: '0 4px 12px rgba(239, 68, 68, 0.2)',
+    transition: 'transform 0.2s ease',
   },
-
-  // Main Layout
-  mainContainer: {
-    display: 'flex',
-    minHeight: 'calc(100vh - 80px)',
+  mainContainer: { 
+    display: 'flex', 
+    minHeight: 'calc(100vh - 65px)' 
   },
+  
+  // SIDEBAR WITH GLASS OVERLAY
   sidebar: {
     width: '280px',
-    background: 'white',
-    boxShadow: '4px 0 20px rgba(0,0,0,0.06)',
-    borderRight: '1px solid #e2e8f0',
+    backgroundImage: `linear-gradient(to bottom, rgba(15, 23, 42, 0.85), rgba(15, 23, 42, 0.95)), url(${sidebarBg})`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundAttachment: 'fixed', // Keeps image steady on scroll
+    color: 'white',
+    padding: '1.5rem 0',
+    borderRight: '1px solid rgba(255, 255, 255, 0.1)',
   },
-  nav: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.25rem',
-    padding: '2rem 0',
+  nav: { 
+    display: 'flex', 
+    flexDirection: 'column', 
+    gap: '6px', 
+    padding: '0 12px' 
   },
+
+  // LINK DEFAULT STATE
   sidebarLink: {
     display: 'flex',
     alignItems: 'center',
-    gap: '1.25rem',
-    padding: '1.25rem 1.75rem',
-    color: '#475569',
+    gap: '14px',
+    padding: '14px 18px',
+    color: 'rgba(255, 255, 255, 0.6)', // Faded when not selected
     textDecoration: 'none',
-    borderRadius: '0 20px 20px 0',
-    fontWeight: 500,
-    fontSize: '1rem',
+    borderRadius: '12px',
+    fontWeight: '500',
+    fontSize: '0.95rem',
     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-    borderLeft: '4px solid transparent',
-    background: 'transparent',
-    width: '100%',
-    textAlign: 'left',
-  },
-  sidebarLinkDisabled: {
-    opacity: 0.5,
-    background: 'transparent !important',
-  },
-  'sidebarLink:hover': {
-    background: 'linear-gradient(135deg, #667eea15, #764ba215)',
-    color: '#667eea',
-    borderLeftColor: '#667eea',
-    transform: 'translateX(4px)',
+    border: '1px solid transparent',
   },
 
-  // Main Content
-  mainContent: {
-    flex: 1,
-    padding: '2.5rem',
-    overflow: 'auto',
+  // HOVER EFFECT
+  sidebarLinkHover: {
+    background: 'rgba(255, 255, 255, 0.1)',
+    color: '#ffffff',
+    transform: 'translateX(5px)',
   },
 
-
-
-  // Responsive
-  '@media (max-width: 1024px)': {
-    sidebar: {
-      transform: 'translateX(-100%)',
-    },
+  // ✅ TRANSPARENT ACTIVE STATE (No Blue)
+  sidebarLinkActive: {
+    background: 'rgba(255, 255, 255, 0.12)', // Subtle highlight
+    color: '#ffffff',
+    fontWeight: '700',
+    border: '1px solid rgba(255, 255, 255, 0.3)', // Frosted glass border
+    backdropFilter: 'blur(8px)',
+    WebkitBackdropFilter: 'blur(8px)',
   },
+
+  icon: { fontSize: '1.2rem' },
+  activeIndicator: { marginLeft: 'auto', fontSize: '1.5rem', lineHeight: 0 },
+  mainContent: { flex: 1, padding: '2.5rem', background: '#f8fafc', overflow: 'auto' },
 };
 
-// Add global CSS for smooth animations
-const styleSheet = document.createElement("style");
-styleSheet.textContent = `
-  @keyframes slideIn {
-    from { transform: translateX(-100%); }
-    to { transform: translateX(0); }
-  }
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-`;
-if (!document.querySelector('style[data-layout]')) {
-  styleSheet.setAttribute('data-layout', 'true');
-  document.head.appendChild(styleSheet);
-}
-
-export { styles }; // Export for other components if needed
+export default Layout;

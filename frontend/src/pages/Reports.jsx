@@ -3,8 +3,8 @@ import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { 
-  FaFileExport, FaPrint, FaFilter, FaCalendarAlt, 
-  FaCheckCircle, FaClock, FaUsers, FaChartLine 
+  FaPrint, FaCalendarAlt, FaCheckCircle, 
+  FaClock, FaUsers, FaChartLine, FaTag, FaFileExcel, FaFilePdf, FaSearch, FaUserTie 
 } from 'react-icons/fa';
 import '../styles/Report.css';
 
@@ -16,152 +16,171 @@ export default function Reports() {
     departmentStats: [], userWorkload: []
   });
   const [meetings, setMeetings] = useState([]);
+  const [categories, setCategories] = useState([]); 
   const [loading, setLoading] = useState(true);
+  
+  // Filter States
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("");
   const [titleFilter, setTitleFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+
   const token = localStorage.getItem("token");
 
   const fetchReports = async () => {
     try {
       setLoading(true);
-      const [statsRes, meetingRes] = await Promise.all([
-        fetch(`${API}/reports/stats?startDate=${startDate}&endDate=${endDate}`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${API}/reports/meeting-details?startDate=${startDate}&endDate=${endDate}`, { headers: { Authorization: `Bearer ${token}` } })
+      const params = new URLSearchParams({
+        startDate, endDate, 
+        department: departmentFilter,
+        category: categoryFilter, 
+        title: titleFilter
+      }).toString();
+
+      const [statsRes, meetingRes, catRes] = await Promise.all([
+        fetch(`${API}/reports/stats?${params}`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API}/reports/meeting-details?${params}`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API}/categories`, { headers: { Authorization: `Bearer ${token}` } })
       ]);
+
       const statsData = await statsRes.json();
       const meetingData = await meetingRes.json();
+      const catData = await catRes.json();
+      
       if (statsData.success) setStats(statsData.data || {});
       if (meetingData.success) setMeetings(meetingData.data || []);
+      if (catData.success) setCategories(catData.data || []);
+      
     } catch (err) {
-      console.error("Report Fetch Error:", err);
+      console.error("Fetch Error:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchReports(); }, []);
-
-  const filteredMeetings = meetings.filter(m => 
-    (!departmentFilter || m.department === departmentFilter) &&
-    (!titleFilter || m.title.toLowerCase().includes(titleFilter.toLowerCase()))
-  );
+  useEffect(() => {
+    fetchReports();
+  }, []);
 
   if (loading) return (
     <div className="loader-container">
       <div className="spinner"></div>
-      <p>Generating Analytics...</p>
+      <p>Generating SLR Metaliks Analytics...</p>
     </div>
   );
 
   return (
-    <div className="reports-page">
-      {/* HEADER SECTION */}
-      <header className="reports-header">
-        <div className="header-info">
-          <h1>Meeting Insights</h1>
-          <p>Performance analytics and MOM details</p>
-        </div>
-        <button className="btn-print" onClick={() => window.print()}><FaPrint /> Print View</button>
-      </header>
-
-      {/* SINGLE ROW FILTER & EXPORT BAR */}
-      <div className="control-panel">
-        <div className="filter-side">
-          <div className="input-box">
-            <label><FaCalendarAlt /> Start</label>
-            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+    <div className="reports-wrapper" style={scrollWrapperStyle}>
+      <div className="reports-page" style={{ padding: '24px' }}>
+        
+        {/* HEADER */}
+        <header className="reports-header" style={headerStyle}>
+          <div className="header-info">
+            <h1 style={{ margin: 0, color: '#1e293b', fontSize: '24px', fontWeight: '800' }}>SLR Metaliks Insights</h1>
+            <p style={{ margin: '4px 0 0', color: '#64748b' }}>Management Information System (MIS) Report</p>
           </div>
-          <div className="input-box">
-            <label><FaCalendarAlt /> End</label>
-            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+          <div className="header-actions" style={{ display: 'flex', gap: '12px' }}>
+            <button onClick={() => exportExcel(meetings)} style={{ ...actionBtnBase, background: '#10b981', color: 'white' }}>
+              <FaFileExcel /> Excel
+            </button>
+            <button onClick={() => exportPDF(stats, meetings)} style={{ ...actionBtnBase, background: '#ef4444', color: 'white' }}>
+              <FaFilePdf /> PDF
+            </button>
+            <button onClick={() => window.print()} style={{ ...actionBtnBase, background: '#64748b', color: 'white' }}>
+              <FaPrint /> Print View
+            </button>
           </div>
-          <div className="input-box">
-            <label><FaUsers /> Dept</label>
-            <select value={departmentFilter} onChange={(e) => setDepartmentFilter(e.target.value)}>
-              <option value="">All</option>
-              {[...new Set(meetings.map(m => m.department))].map((d, i) => (
-                <option key={i} value={d}>{d}</option>
-              ))}
-            </select>
+        </header>
+
+        {/* FILTERS */}
+        <div className="control-panel" style={filterBarStyle}>
+          <div className="filter-side" style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', alignItems: 'flex-end' }}>
+            <div className="input-box">
+              <label style={labelStyle}><FaCalendarAlt /> Start</label>
+              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} style={inputStyle} />
+            </div>
+            <div className="input-box">
+              <label style={labelStyle}><FaCalendarAlt /> End</label>
+              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} style={inputStyle} />
+            </div>
+            <div className="input-box">
+              <label style={labelStyle}><FaUsers /> Dept</label>
+              <select value={departmentFilter} onChange={(e) => setDepartmentFilter(e.target.value)} style={inputStyle}>
+                <option value="">All Departments</option>
+                {[...new Set(meetings.map(m => m.department))].filter(Boolean).map((d, i) => (
+                  <option key={i} value={d}>{d}</option>
+                ))}
+              </select>
+            </div>
+            <div className="input-box">
+              <label style={labelStyle}><FaTag /> Category</label>
+              <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} style={inputStyle}>
+                <option value="">All Categories</option>
+                <option value="technical">Technical</option>
+                <option value="commercial">Commercial</option>
+              </select>
+            </div>
+            <button className="btn-apply" onClick={fetchReports} style={applyBtnStyle}>Generate Report</button>
           </div>
-          <div className="input-box search">
-            <label><FaFilter /> Search</label>
-            <input type="text" placeholder="Meeting title..." value={titleFilter} onChange={(e) => setTitleFilter(e.target.value)} />
-          </div>
-          <button className="btn-apply" onClick={fetchReports}>Apply</button>
         </div>
 
-        <div className="export-side">
-          <button className="btn-excel" onClick={() => exportExcel(filteredMeetings)}><FaFileExport />Excel</button>
-          <button className="btn-pdf" onClick={() => exportPDF(stats, filteredMeetings)}><FaFileExport />PDF</button>
-        </div>
-      </div>
-
-      {/* KPI CARDS */}
-      <div className="kpi-grid">
-        <KPICard title="Total Meetings" value={stats.totalMeetings} icon={<FaUsers />} color="#6366f1" />
-        <KPICard title="Pending Tasks" value={stats.pendingActions} icon={<FaClock />} color="#f59e0b" />
-        <KPICard title="Completed" value={stats.completedTasks} icon={<FaCheckCircle />} color="#10b981" />
-        <KPICard title="Productivity" value={`${stats.completionRate}%`} icon={<FaChartLine />} color="#3b82f6" />
-      </div>
-
-      {/* ANALYTICS TABLES */}
-      <div className="content-grid">
-        <div className="card shadow">
-          <h3>Meetings per Department</h3>
-          <table className="mini-table">
-            <thead>
-              <tr><th>Department</th><th className="text-right">Total</th></tr>
-            </thead>
-            <tbody>
-              {stats.departmentStats.map((d, i) => (
-                <tr key={i}><td>{d.department}</td><td className="text-right"><span className="tag-blue">{d.meeting_count}</span></td></tr>
-              ))}
-            </tbody>
-          </table>
+        {/* KPI CARDS */}
+        <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '30px' }}>
+          <KPICard title="Total Meetings" value={stats.totalMeetings} icon={<FaUsers />} color="#6366f1" />
+          <KPICard title="Pending Tasks" value={stats.pendingActions} icon={<FaClock />} color="#f59e0b" />
+          <KPICard title="Completed" value={stats.completedTasks} icon={<FaCheckCircle />} color="#10b981" />
+          <KPICard title="Productivity" value={`${stats.completionRate}%`} icon={<FaChartLine />} color="#3b82f6" />
         </div>
 
-        <div className="card shadow">
-          <h3>User Task Load</h3>
-          <table className="mini-table">
-            <thead>
-              <tr><th>Employee</th><th className="text-right">Tasks</th></tr>
-            </thead>
-            <tbody>
-              {stats.userWorkload.map((u, i) => (
-                <tr key={i}><td>{u.employee}</td><td className="text-right"><span className="tag-gray">{u.task_count}</span></td></tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="card full-width shadow">
-          <h3>Detailed MOM Report</h3>
-          <div className="table-container">
+        {/* DATA TABLE */}
+        <div className="card full-width shadow" style={cardStyle}>
+          <h3 style={cardTitleStyle}>Detailed MOM Report</h3>
+          <div className="table-container" style={{ overflowX: 'auto' }}>
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Meeting</th>
-                  <th>Date</th>
-                  <th>Department</th>
+                  <th>Meeting Title</th>
+                  <th>Details</th>
+                  <th>Dept / Category</th>
+                  <th>Conducted By</th>
                   <th>Discussion Point</th>
-                  <th>Owner</th>
+                  <th>Responsible</th>
                   <th>Status</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredMeetings.map((m, i) => (
+                {meetings.length > 0 ? meetings.map((m, i) => (
                   <tr key={i}>
                     <td className="font-bold">{m.title}</td>
-                    <td>{m.meeting_date ? new Date(m.meeting_date).toLocaleDateString() : "-"}</td>
-                    <td>{m.department}</td>
-                    <td className="text-muted">{m.point}</td>
-                    <td>{m.assigned_to}</td>
-                    <td><span className={`status-pill ${m.status?.toLowerCase().replace(/\s/g, '')}`}>{m.status}</span></td>
+                    <td style={{ fontSize: '12px' }}>
+                      <div>{m.meeting_date ? new Date(m.meeting_date).toLocaleDateString('en-GB') : "-"}</div>
+                      <div style={{ color: '#64748b', fontSize: '11px' }}>{m.meeting_type}</div>
+                    </td>
+                    <td>
+                      <div style={{ fontWeight: '600' }}>{m.department}</div>
+                      <span style={catTagStyle}>{m.meeting_category}</span>
+                    </td>
+                    <td style={{ fontSize: '12px' }}>
+                      <FaUserTie style={{ marginRight: '4px', color: '#64748b' }} />
+                      {m.conducted_by_name || "N/A"}
+                    </td>
+                    <td className="text-muted" style={{ maxWidth: '250px' }}>{m.point}</td>
+                    
+                    {/* CRITICAL FIX: Responsible Mapping */}
+                    <td style={{ fontWeight: '500', color: '#334155' }}>
+                      {m.assigned_to_names || m.assigned_to || "Unassigned"}
+                    </td>
+
+                    <td>
+                      <span className={`status-pill ${m.status?.toLowerCase().replace(/\s/g, '')}`}>
+                        {m.status}
+                      </span>
+                    </td>
                   </tr>
-                ))}
+                )) : (
+                  <tr><td colSpan="7" style={{textAlign:'center', padding:'40px', color: '#94a3b8'}}>No meeting data matches the selected filters.</td></tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -171,34 +190,72 @@ export default function Reports() {
   );
 }
 
+// --- KPI Card Component ---
 const KPICard = ({ title, value, icon, color }) => (
-  <div className="kpi-card" style={{ borderLeft: `5px solid ${color}` }}>
-    <div className="kpi-icon" style={{ color: color }}>{icon}</div>
-    <div className="kpi-data">
-      <span className="label">{title}</span>
-      <h2 className="value">{value}</h2>
+  <div style={{ ...cardStyle, borderLeft: `6px solid ${color}`, display: 'flex', alignItems: 'center', gap: '16px', padding: '20px' }}>
+    <div style={{ color: color, fontSize: '28px' }}>{icon}</div>
+    <div>
+      <span style={{ fontSize: '13px', color: '#64748b', fontWeight: '600' }}>{title}</span>
+      <h2 style={{ margin: 0, fontSize: '24px', color: '#1e293b' }}>{value}</h2>
     </div>
   </div>
 );
 
-/* EXPORT FUNCTIONS */
+// --- STYLES ---
+const scrollWrapperStyle = { height: '100vh', overflowY: 'auto', background: '#f1f5f9', width: '100%' };
+const headerStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', background: '#fff', padding: '20px', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' };
+const actionBtnBase = { display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '14px', fontWeight: '700' };
+const filterBarStyle = { background: '#fff', padding: '20px', borderRadius: '12px', marginBottom: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' };
+const labelStyle = { fontSize: '11px', fontWeight: '800', color: '#475569', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '6px' };
+const inputStyle = { padding: '10px 12px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '13px', minWidth: '160px', outline: 'none', background: '#fff' };
+const applyBtnStyle = { background: '#3b82f6', color: 'white', border: 'none', padding: '0 24px', height: '40px', borderRadius: '6px', fontWeight: '700', cursor: 'pointer' };
+const cardStyle = { background: '#fff', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', padding: '20px' };
+const cardTitleStyle = { margin: '0 0 16px', fontSize: '16px', color: '#1e293b', fontWeight: '700' };
+const catTagStyle = { background: '#e0f2fe', color: '#0369a1', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '700', textTransform: 'capitalize' };
+
+// --- EXPORT FUNCTIONS ---
 function exportExcel(meetings) {
-  const ws = XLSX.utils.json_to_sheet(meetings);
+  const ws = XLSX.utils.json_to_sheet(meetings.map(m => ({
+    "Meeting Title": m.title,
+    "Date": m.meeting_date ? new Date(m.meeting_date).toLocaleDateString('en-GB') : "",
+    "Type": m.meeting_type || "",
+    "Category": m.meeting_category || "General",
+    "Department": m.department,
+    "Conductor": m.conducted_by_name || "N/A",
+    "Point": m.point,
+    "Responsible": m.assigned_to_names || m.assigned_to || "Unassigned",
+    "Status": m.status
+  })));
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Meetings");
-  XLSX.writeFile(wb, "MOM_Analytics.xlsx");
+  XLSX.utils.book_append_sheet(wb, ws, "SLR_MOM_Report");
+  XLSX.writeFile(wb, "SLR_Metaliks_Detailed_Report.xlsx");
 }
 
 function exportPDF(stats, meetings) {
   const doc = new jsPDF('l', 'mm', 'a4');
-  doc.setFontSize(20);
-  doc.text("Meeting Analytics Report", 14, 15);
+  doc.setFontSize(16);
+  doc.setTextColor(40);
+  doc.text("SLR Metaliks - Meeting Insights Detailed Report", 14, 15);
+  
   autoTable(doc, {
-    startY: 25,
-    head: [["Meeting", "Date", "Department", "Discussion", "Responsible", "Status"]],
-    body: meetings.map(m => [m.title, m.meeting_date, m.department, m.point, m.assigned_to, m.status]),
-    theme: 'striped',
-    headStyles: { fillColor: [99, 102, 241] }
+    startY: 22,
+    head: [["Meeting", "Date", "Category", "Dept", "Conductor", "Discussion", "Responsible", "Status"]],
+    body: meetings.map(m => [
+      m.title, 
+      m.meeting_date ? new Date(m.meeting_date).toLocaleDateString('en-GB') : "", 
+      m.meeting_category || "General", 
+      m.department,
+      m.conducted_by_name || "N/A",
+      m.point, 
+      m.assigned_to_names || m.assigned_to || "Unassigned", 
+      m.status
+    ]),
+    headStyles: { fillColor: [59, 130, 246] },
+    styles: { fontSize: 8, cellPadding: 2 },
+    columnStyles: {
+      5: { cellWidth: 50 }, // Wrap Discussion Point
+      6: { cellWidth: 35 }  // Wrap Responsible names
+    }
   });
-  doc.save("Report.pdf");
+  doc.save("SLR_Metaliks_MOM_Report.pdf");
 }

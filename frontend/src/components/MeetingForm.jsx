@@ -1,28 +1,16 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import Select from "react-select";
+// ✅ Correct import path for your background
+import bgImage from "../assets/img/create.jpg"; 
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001";
 
-
-
 export default function MeetingForm({ token, refreshMeetings }) {
-
   const navigate = useNavigate();
   const today = new Date().toISOString().split("T")[0];
 
-  const fixedUsers = [
-    { id: 2098, name: "BRIJESH KUMAR UPADHYAY" },
-    { id: 33, name: "VINOD B S" },
-    { id: 566, name: "RAVINDRA C JOSHI" },
-  ];
-
-  const venues = [
-    "Ayodhya, Conference hall Second Floor Admin Building",
-    "Kashi, Conference hall First Floor Admin Building",
-    "Kishkinda, Conference hall Third Floor Admin Building",
-  ];
-
+  // 1. Initial Form State
   const [meeting, setMeeting] = useState({
     title: "",
     description: "",
@@ -44,124 +32,82 @@ export default function MeetingForm({ token, refreshMeetings }) {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
-  /* ---------------- FETCH DEPARTMENTS ---------------- */
+  // 2. Constants for Dropdowns
+  const fixedUsers = [
+    { id: 2098, name: "BRIJESH KUMAR UPADHYAY" },
+    { id: 33, name: "VINOD B S" },
+    { id: 566, name: "RAVINDRA C JOSHI" },
+  ];
 
+  const venues = [
+    "Ayodhya, Conference hall Second Floor Admin Building",
+    "Kashi, Conference hall First Floor Admin Building",
+    "Kishkinda, Conference hall Third Floor Admin Building",
+  ];
+
+  // 3. Fetch Departments
   const fetchDepartments = useCallback(async () => {
     try {
-
       const res = await fetch(`${API_URL}/api/departments`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
-
       const data = await res.json();
-
       if (data.success) {
-        const options = data.data.map((dept) => ({
-          value: dept,
-          label: dept,
-        }));
-
+        const options = data.data.map((dept) => ({ value: dept, label: dept }));
         setDepartments(options);
       }
-
     } catch (err) {
       console.error("Department fetch error:", err);
     }
-
   }, [token]);
 
   useEffect(() => {
     fetchDepartments();
   }, [fetchDepartments]);
 
-  /* ---------------- FETCH EMPLOYEES ---------------- */
-
-  const fetchEmployees = async (departments) => {
-
-  if (!departments || departments.length === 0) {
-    setEmployees([]);
-    return;
-  }
-
-  try {
-
-    const res = await fetch(`${API_URL}/api/meetings/department-employees`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ departments })
-    });
-
-    const data = await res.json();
-
-    if (data.success) {
-      setEmployees(data.employees);
+  // 4. Fetch Employees based on selected departments
+  const fetchEmployees = async (depts) => {
+    if (!depts || depts.length === 0) {
+      setEmployees([]);
+      return;
     }
-
-  } catch (error) {
-    console.error(error);
-  }
-};
-  /* ---------------- VALIDATION ---------------- */
-
-  const validateForm = () => {
-  const newErrors = {};
-
-  if (!meeting.title?.trim())
-    newErrors.title = "Title is required";
-
-  if (!meeting.meeting_date)
-    newErrors.meeting_date = "Date is required";
-
-  if (meeting.department.length === 0)
-    newErrors.department = "Select at least one department";
-
-  if (!meeting.created_by)
-    newErrors.created_by = "Created By required";
-
-  if (!meeting.chaired_by?.trim())
-    newErrors.chaired_by = "Chaired By required";
-
-  if (meeting.created_by === "other" && !meeting.created_by_name?.trim()) {
-    newErrors.created_by = "Please enter creator name";
-  }
-
-  setErrors(newErrors);
-
-  return Object.keys(newErrors).length === 0;
-};
-
-  /* ---------------- CREATE MEETING ---------------- */
-
-  const createMeeting = async () => {
-
-    if (!validateForm()) return;
-
-    setLoading(true);
-
     try {
+      const res = await fetch(`${API_URL}/api/meetings/department-employees`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ departments: depts })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setEmployees(data.employees);
+      }
+    } catch (error) {
+      console.error("Employee fetch error:", error);
+    }
+  };
 
+  // 5. Validation Logic
+  const validateForm = () => {
+    const newErrors = {};
+    if (!meeting.title?.trim()) newErrors.title = "Title is required";
+    if (!meeting.meeting_date) newErrors.meeting_date = "Date is required";
+    if (meeting.department.length === 0) newErrors.department = "Select at least one department";
+    if (!meeting.chaired_by?.trim()) newErrors.chaired_by = "Chaired By required";
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  // 6. Submit Meeting
+  const createMeeting = async () => {
+    if (!validateForm()) return;
+    setLoading(true);
+    try {
       const payload = {
-  ...meeting,
-
-  department: meeting.department.join(", "),
-
-  venue:
-    meeting.venue === "other"
-      ? meeting.venue_custom
-      : meeting.venue,
-
-  created_by_name:
-    meeting.created_by === "other"
-      ? meeting.created_by_name
-      : null,
-
-  chaired_by: meeting.chaired_by,   // ✅ send to backend
-  meeting_type: meeting.meeting_type // ✅ send to backend
-};
+        ...meeting,
+        department: meeting.department.join(", "),
+        venue: meeting.venue === "other" ? meeting.venue_custom : meeting.venue,
+        invited_employees: selectedEmployees, // Sending selected IDs
+      };
 
       const res = await fetch(`${API_URL}/api/meetings`, {
         method: "POST",
@@ -172,387 +118,299 @@ export default function MeetingForm({ token, refreshMeetings }) {
         body: JSON.stringify(payload),
       });
 
-      const data = await res.json();
-
       if (res.ok) {
-
-        alert(`✅ Meeting Created! ID: ${data.meetingId}`);
-
+        alert("✅ Meeting Created Successfully!");
         if (refreshMeetings) refreshMeetings();
-
         navigate(-1);
-
       } else {
+        const data = await res.json();
         alert(data.message || "Error creating meeting");
       }
-
     } catch (err) {
       alert("Network Error");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
-
-  /* ---------------- INPUT CHANGE ---------------- */
-
-  const handleChange = (e) => {
-    setMeeting({
-      ...meeting,
-      [e.target.name]: e.target.value,
-    });
-  };
-
-  /* ---------------- DEPARTMENT CHANGE ---------------- */
-
-  const handleDeptChange = (e) => {
-
-    const dept = e.target.value;
-
-    setMeeting({
-      ...meeting,
-      department: dept,
-    });
-
-    setSelectedEmployees([]);
-    fetchEmployees(dept);
-  };
-
-  /* ---------------- EMPLOYEE SELECT ---------------- */
 
   const toggleEmployee = (id) => {
-
-    setSelectedEmployees((prev) => {
-
-      if (prev.includes(id)) {
-        return prev.filter((emp) => emp !== id);
-      }
-
-      return [...prev, id];
-    });
+    setSelectedEmployees((prev) =>
+      prev.includes(id) ? prev.filter((emp) => emp !== id) : [...prev, id]
+    );
   };
 
-  /* ---------------- UI ---------------- */
-
   return (
-    <div style={styles.container}>
-
-      <h2 style={styles.title}>📋 Create New Meeting</h2>
-
-      <div style={styles.formGrid}>
-
-        {/* TITLE */}
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>Meeting Title *</label>
-          <input
-            name="title"
-            style={styles.input}
-            value={meeting.title}
-            onChange={handleChange}
-          />
-          {errors.title && <span style={styles.error}>{errors.title}</span>}
+    <div style={styles.pageWrapper}>
+      <div style={styles.container}>
+        <div style={styles.formHeader}>
+          <h2 style={styles.title}>📋 Create New Meeting</h2>
+          <p style={styles.subtitle}>Fill in the details to schedule a new session</p>
         </div>
 
-        {/* DATE */}
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>Date *</label>
-          <input
-            type="date"
-            name="meeting_date"
-            style={styles.input}
-            min={today}
-            value={meeting.meeting_date}
-            onChange={handleChange}
-          />
-        </div>
+        <div style={styles.formGrid}>
+          {/* TITLE */}
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Meeting Title *</label>
+            <input 
+              name="title" 
+              placeholder="Enter meeting title" 
+              style={styles.input} 
+              value={meeting.title} 
+              onChange={(e) => setMeeting({...meeting, title: e.target.value})} 
+            />
+            {errors.title && <span style={styles.error}>{errors.title}</span>}
+          </div>
 
-        {/* TIME */}
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>Time</label>
-          <input
-            type="time"
-            name="meeting_time"
-            style={styles.input}
-            value={meeting.meeting_time}
-            onChange={handleChange}
-          />
-        </div>
+          {/* DATE */}
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Date *</label>
+            <input 
+              type="date" 
+              name="meeting_date" 
+              style={styles.input} 
+              min={today} 
+              value={meeting.meeting_date} 
+              onChange={(e) => setMeeting({...meeting, meeting_date: e.target.value})} 
+            />
+            {errors.meeting_date && <span style={styles.error}>{errors.meeting_date}</span>}
+          </div>
 
-        {/* DEPARTMENT */}
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>
-  Department * {meeting.department.length > 0 && `(${meeting.department.length})`}
-</label>
+          {/* DEPARTMENT (Multi-Select) */}
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Departments *</label>
+            <Select
+              options={departments}
+              isMulti
+              styles={customSelectStyles}
+              value={departments.filter((d) => meeting.department.includes(d.value))}
+              onChange={(selected) => {
+                const values = selected ? selected.map((s) => s.value) : [];
+                setMeeting({ ...meeting, department: values });
+                fetchEmployees(values);
+              }}
+            />
+            {errors.department && <span style={styles.error}>{errors.department}</span>}
+          </div>
 
-<Select
-  options={departments}
-  isMulti
-  closeMenuOnSelect={true}
-  value={departments.filter((d) =>
-    meeting.department.includes(d.value)
-  )}
-  onChange={(selected) => {
+          {/* CHAIRED BY */}
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Chaired By *</label>
+            <input 
+              name="chaired_by" 
+              style={styles.input} 
+              value={meeting.chaired_by} 
+              onChange={(e) => setMeeting({...meeting, chaired_by: e.target.value})} 
+              placeholder="MD Sir / Director / HOD" 
+            />
+            {errors.chaired_by && <span style={styles.error}>{errors.chaired_by}</span>}
+          </div>
 
-    const values = selected ? selected.map((s) => s.value) : [];
-
-    setMeeting({
-      ...meeting,
-      department: values
-    });
-
-    fetchEmployees(values);
-
-  }}
-/>
-
-
-
-          {errors.department && (
-            <span style={styles.error}>{errors.department}</span>
-          )}
-        </div>
-
-        {/* INVITE EMPLOYEES */}
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>
-  Invite Employees {selectedEmployees.length > 0 && `(${selectedEmployees.length} selected)`}
-</label>
-
-          <div style={styles.checkboxContainer}>
-
-            {employees.length === 0 && (
-              <p style={{ fontSize: "13px", color: "#888" }}>
-                Select department to load employees
-              </p>
+          {/* VENUE */}
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Venue</label>
+            <select 
+              name="venue" 
+              style={styles.input} 
+              value={meeting.venue} 
+              onChange={(e) => setMeeting({...meeting, venue: e.target.value})}
+            >
+              <option value="">Select Venue</option>
+              {venues.map((v, i) => <option key={i} value={v}>{v}</option>)}
+              <option value="other">Other</option>
+            </select>
+            {meeting.venue === "other" && (
+              <input 
+                placeholder="Enter custom venue" 
+                style={{...styles.input, marginTop: '10px'}} 
+                value={meeting.venue_custom} 
+                onChange={(e) => setMeeting({...meeting, venue_custom: e.target.value})} 
+              />
             )}
+          </div>
 
-            {employees.map((emp) => (
-              <label key={emp.EmployeeID} style={styles.checkboxLabel}>
+          {/* MEETING TYPE */}
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Meeting Type</label>
+            <select 
+              name="meeting_type" 
+              style={styles.input} 
+              value={meeting.meeting_type} 
+              onChange={(e) => setMeeting({...meeting, meeting_type: e.target.value})}
+            >
+              <option value="Offline">Offline</option>
+              <option value="Online">Online</option>
+            </select>
+          </div>
 
-                <input
-                  type="checkbox"
-                  checked={selectedEmployees.includes(emp.EmployeeID)}
-                  onChange={() => toggleEmployee(emp.EmployeeID)}
-                />
+          {/* EMPLOYEE SELECTION BOX */}
+          <div style={{ ...styles.fieldGroup, gridColumn: "1/-1" }}>
+            <label style={styles.label}>Invite Employees ({selectedEmployees.length} selected)</label>
+            <div style={styles.checkboxContainer}>
+              {employees.length === 0 ? (
+                <p style={{ color: "#666", fontSize: "13px" }}>Select a department to view employees</p>
+              ) : (
+                employees.map((emp) => (
+                  <label key={emp.EmployeeID} style={styles.checkboxLabel}>
+                    <input 
+                      type="checkbox" 
+                      checked={selectedEmployees.includes(emp.EmployeeID)} 
+                      onChange={() => toggleEmployee(emp.EmployeeID)} 
+                    />
+                    {emp.EmployeeName} — <small>{emp.Designation}</small>
+                  </label>
+                ))
+              )}
+            </div>
+          </div>
 
-                {" "}
-                {emp.EmployeeName} — {emp.Designation}
-
-              </label>
-            ))}
-
+          {/* DESCRIPTION */}
+          <div style={{ ...styles.fieldGroup, gridColumn: "1/-1" }}>
+            <label style={styles.label}>Description</label>
+            <textarea 
+              name="description" 
+              placeholder="Purpose of the meeting..." 
+              style={styles.textarea} 
+              value={meeting.description} 
+              onChange={(e) => setMeeting({...meeting, description: e.target.value})} 
+              rows="3" 
+            />
           </div>
         </div>
 
-        {/* CREATED BY */}
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>Created By *</label>
-
-          <select
-            name="created_by"
-            style={styles.input}
-            value={meeting.created_by}
-            onChange={handleChange}
-          >
-
-            <option value="">Select</option>
-
-            {fixedUsers.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.name}
-              </option>
-            ))}
-
-          </select>
-
-        </div>
-
-        {/* CATEGORY */}
-        <div style={styles.fieldGroup}>
-          <label style={styles.label}>Meeting Category</label>
-
-          <select
-            name="meeting_category"
-            style={styles.input}
-            value={meeting.meeting_category}
-            onChange={handleChange}
-          >
-            <option value="">Select</option>
-            <option value="technical">Technical</option>
-            <option value="commercial">Commercial</option>
-          </select>
-
-        </div>
-
-        <div style={styles.fieldGroup}>
-  <label style={styles.label}>Meeting Type</label>
-
-  <select
-    name="meeting_type"
-    style={styles.selectInput}
-    value={meeting.meeting_type}
-    onChange={handleChange}
-  >
-    
-    <option value="Offline">Offline</option>
-    <option value="Online">Online</option>
-    
-  </select>
-</div>
-
-        <div style={styles.fieldGroup}>
-  <label style={styles.label}>
-    Chaired By <span style={styles.required}>*</span>
-  </label>
-
-  <input
-    name="chaired_by"
-    style={styles.input}
-    value={meeting.chaired_by}
-    onChange={handleChange}
-    placeholder="MD Sir / Director / HOD"
-  />
-
-  {errors.chaired_by && (
-    <span style={styles.error}>{errors.chaired_by}</span>
-  )}
-</div>
-
-        {/* VENUE */}
-        <div style={styles.fieldGroup}>
-
-          <label style={styles.label}>Venue</label>
-
-          <select
-            name="venue"
-            style={styles.input}
-            value={meeting.venue}
-            onChange={handleChange}
-          >
-
-            <option value="">Select</option>
-
-            {venues.map((v, i) => (
-              <option key={i} value={v}>
-                {v}
-              </option>
-            ))}
-
-            <option value="other">Other</option>
-
-          </select>
-
-          {meeting.venue === "other" && (
-            <input
-              name="venue_custom"
-              style={styles.input}
-              placeholder="Enter venue"
-              value={meeting.venue_custom}
-              onChange={handleChange}
-            />
-          )}
-
-        </div>
-
-        {/* DESCRIPTION */}
-        <div style={{ ...styles.fieldGroup, gridColumn: "1/-1" }}>
-          <label style={styles.label}>Description</label>
-
-          <textarea
-            name="description"
-            style={styles.textarea}
-            value={meeting.description}
-            onChange={handleChange}
-          />
-
-        </div>
-
+        <button 
+          style={styles.submitBtn} 
+          onClick={createMeeting} 
+          disabled={loading}
+        >
+          {loading ? "Creating..." : "🚀 Schedule Meeting"}
+        </button>
       </div>
-
-      <button
-        style={styles.submitBtn}
-        onClick={createMeeting}
-        disabled={loading}
-      >
-        {loading ? "Creating..." : "Create Meeting"}
-      </button>
-
     </div>
   );
 }
 
-/* ---------------- STYLES ---------------- */
-
+// 7. Styles - Glassmorphism Theme
 const styles = {
-
+  pageWrapper: {
+    minHeight: "100vh",
+    width: "100%",
+    backgroundImage: `linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url(${bgImage})`,
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+    backgroundAttachment: "fixed",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "40px 20px",
+  },
   container: {
-    padding: "30px",
-    maxWidth: "900px",
-    margin: "auto",
-    background: "#fff",
-    borderRadius: "12px",
-    boxShadow: "0 10px 30px rgba(0,0,0,0.1)",
+    padding: "50px",
+    maxWidth: "950px",
+    width: "100%",
+    background: "rgba(255, 255, 255, 0.75)", // Transparent White
+    borderRadius: "24px",
+    backdropFilter: "blur(15px)", // Frosted Glass Effect
+    WebkitBackdropFilter: "blur(15px)",
+    border: "1px solid rgba(255, 255, 255, 0.3)",
+    boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
   },
-
-  title: {
+  formHeader: {
     textAlign: "center",
-    marginBottom: "30px",
+    marginBottom: "40px",
   },
-
+  title: {
+    fontSize: "28px",
+    fontWeight: "800",
+    color: "#0f172a",
+    margin: "0 0 8px 0",
+  },
+  subtitle: {
+    color: "#334155",
+    fontSize: "14px",
+    fontWeight: "500",
+  },
   formGrid: {
     display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: "20px",
+    gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+    gap: "25px",
   },
-
   fieldGroup: {
     display: "flex",
     flexDirection: "column",
   },
-
   label: {
-    marginBottom: "5px",
-    fontWeight: "600",
-  },
-
-  input: {
-    padding: "10px",
-    borderRadius: "6px",
-    border: "1px solid #ccc",
-  },
-
-  textarea: {
-    padding: "10px",
-    borderRadius: "6px",
-    border: "1px solid #ccc",
-  },
-
-  checkboxContainer: {
-    maxHeight: "200px",
-    overflowY: "auto",
-    border: "1px solid #ddd",
-    padding: "10px",
-    borderRadius: "6px",
-  },
-
-  checkboxLabel: {
-    display: "block",
-    marginBottom: "6px",
-  },
-
-  error: {
-    color: "red",
+    marginBottom: "8px",
+    fontWeight: "700",
+    color: "#1e293b",
     fontSize: "12px",
+    textTransform: "uppercase",
+    letterSpacing: "0.5px",
   },
-
+  input: {
+    padding: "12px 16px",
+    borderRadius: "10px",
+    border: "1px solid rgba(0, 0, 0, 0.1)",
+    fontSize: "15px",
+    background: "rgba(255, 255, 255, 0.6)",
+    outline: "none",
+    color: "#000",
+  },
+  textarea: {
+    padding: "12px 16px",
+    borderRadius: "10px",
+    border: "1px solid rgba(0, 0, 0, 0.1)",
+    fontSize: "15px",
+    background: "rgba(255, 255, 255, 0.6)",
+    resize: "none",
+    outline: "none",
+    color: "#000",
+  },
+  checkboxContainer: {
+    maxHeight: "150px",
+    overflowY: "auto",
+    background: "rgba(255, 255, 255, 0.4)",
+    padding: "15px",
+    borderRadius: "10px",
+    border: "1px solid rgba(0,0,0,0.1)",
+  },
+  checkboxLabel: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    marginBottom: "8px",
+    fontSize: "14px",
+    cursor: "pointer",
+    color: "#1e293b",
+  },
   submitBtn: {
-    marginTop: "25px",
+    marginTop: "40px",
     width: "100%",
-    padding: "14px",
-    background: "#8B0000",
+    padding: "18px",
+    background: "#1e293b",
     color: "#fff",
     border: "none",
-    borderRadius: "8px",
+    borderRadius: "12px",
+    fontWeight: "700",
+    fontSize: "16px",
     cursor: "pointer",
+    boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.3)",
+    transition: "transform 0.2s ease",
   },
+  error: {
+    color: "#be123c",
+    fontSize: "12px",
+    marginTop: "4px",
+    fontWeight: "600",
+  }
+};
 
+const customSelectStyles = {
+  control: (base) => ({
+    ...base,
+    borderRadius: '10px',
+    padding: '3px',
+    border: '1px solid rgba(0, 0, 0, 0.1)',
+    background: 'rgba(255, 255, 255, 0.6)',
+    backdropFilter: 'blur(4px)',
+  })
 };

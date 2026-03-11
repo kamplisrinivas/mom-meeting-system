@@ -38,6 +38,10 @@ app.use("/api/dashboard", dashboardRoutes);
 const reportRoutes = require("./routes/reportRoutes");
 app.use("/api/reports", reportRoutes);
 
+// server.js
+const categoryRoutes = require("./routes/category.routes");
+app.use("/api/categories", categoryRoutes);
+
 /* ================= TEST ROUTES ================= */
 
 app.get("/", (req, res) => {
