@@ -303,7 +303,7 @@ const styles = {
 // Animation keyframes helper
 if (typeof document !== "undefined") {
   const styleSheet = document.createElement("style");
-  styleSheet.textContent = `@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`;
+  styleSheet.textContent = `@keyframes spinxa { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`;
   if (!document.querySelector('style[data-dashboard]')) {
     styleSheet.setAttribute('data-dashboard', 'true');
     document.head.appendChild(styleSheet);

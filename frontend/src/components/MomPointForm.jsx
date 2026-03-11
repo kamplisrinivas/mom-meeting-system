@@ -350,8 +350,8 @@ export default function MomPointForm({ meetingId, token }) {
         <div style={styles.headerRow}>
           <h2 style={styles.headerTitle}>Action Items</h2>
           <div style={styles.actionButtonGroup}>
-            <button style={styles.exportBtn} onClick={handleExportExcel}>Excel</button>
-            <button style={styles.exportBtn} onClick={handleExportPDF}>PDF</button>
+            <button style={styles.exportBtn} onClick={handleExportExcel}>Export Excel</button>
+            <button style={styles.exportBtn} onClick={handleExportPDF}>Export PDF</button>
             {!isAdding && (
               <button style={styles.topAddBtn} onClick={() => setIsAdding(true)}>+ Add New Point</button>
             )}
