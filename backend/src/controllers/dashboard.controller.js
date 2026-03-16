@@ -57,3 +57,37 @@ exports.getPendingActions = async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 };
+
+
+
+exports.getRecentMeetings = async (req, res) => {
+  try {
+    const { startDate, endDate, department } = req.query;
+
+    // Use DATE() in SQL to ensure the "00:00:00" in your data doesn't cause issues
+    let query = `
+      SELECT id, title, meeting_date, department, meeting_type 
+      FROM meetings 
+      WHERE 1=1
+    `;
+    const params = [];
+
+    if (startDate && endDate) {
+      query += " AND DATE(meeting_date) BETWEEN ? AND ?";
+      params.push(startDate, endDate);
+    }
+
+    if (department) {
+      query += " AND department = ?";
+      params.push(department);
+    }
+
+    query += " ORDER BY meeting_date DESC LIMIT 10";
+
+    const [rows] = await db.query(query, params);
+    res.json({ success: true, data: rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+};

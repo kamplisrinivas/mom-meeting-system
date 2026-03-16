@@ -42,6 +42,9 @@ app.use("/api/reports", reportRoutes);
 const categoryRoutes = require("./routes/category.routes");
 app.use("/api/categories", categoryRoutes);
 
+const dashboardRecentRoutes = require("./routes/dashboard.routes"); // Use a new name here
+app.use("/api", dashboardRecentRoutes);
+
 /* ================= TEST ROUTES ================= */
 
 app.get("/", (req, res) => {
