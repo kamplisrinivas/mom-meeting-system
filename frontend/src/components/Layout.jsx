@@ -1,10 +1,15 @@
 import React, { useState } from 'react';
 import { Outlet, useNavigate, Link, useLocation } from 'react-router-dom';
 import logoImg from "../assets/img/company-logo.png"; 
-import sidebarBg from "../assets/img/create.jpg"; 
+import sidebarBg from "../assets/img/sidebar.jpg"; 
+import bgImage from "../assets/img/bgd.jpg"; 
 
 const Layout = ({ onLogout }) => {
   const navigate = useNavigate();
+  
+  // State for Header Hovering
+  const [isLogoHovered, setIsLogoHovered] = useState(false);
+  const [isLogoutHovered, setIsLogoutHovered] = useState(false);
 
   const handleLogout = () => {
     if (onLogout) onLogout();
@@ -13,10 +18,18 @@ const Layout = ({ onLogout }) => {
 
   return (
     <div style={styles.appContainer}>
-      {/* HEADER */}
       <header style={styles.header}>
-        <div style={styles.logoSection}>
-          <div style={styles.logoWrapper}>
+        {/* LOGO SECTION WITH HOVER */}
+        <div 
+          style={styles.logoSection}
+          onMouseEnter={() => setIsLogoHovered(true)}
+          onMouseLeave={() => setIsLogoHovered(false)}
+        >
+          <div style={{
+            ...styles.logoWrapper,
+            transform: isLogoHovered ? 'scale(1.05) rotate(-3deg)' : 'scale(1)',
+            transition: 'all 0.3s ease'
+          }}>
             <img 
               src={logoImg} 
               alt="Logo" 
@@ -24,15 +37,41 @@ const Layout = ({ onLogout }) => {
               onError={(e) => { e.target.src = "https://via.placeholder.com/40"; }}
             />
           </div>
-          <span style={styles.logoText}>MOM Dashboard</span>
+          <span style={{
+            ...styles.logoText,
+            color: isLogoHovered ? '#2563eb' : '#1e3a8a',
+            transform: isLogoHovered ? 'translateX(5px)' : 'translateX(0)',
+            transition: 'all 0.3s ease'
+          }}>
+            MOM Dashboard
+          </span>
         </div>
-        <button style={styles.logoutBtn} onClick={handleLogout}>
-          <span>👋</span> Logout
-        </button>
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          {/* LOGOUT BUTTON WITH HOVER */}
+          <button 
+            style={{
+              ...styles.logoutBtn,
+              background: isLogoutHovered ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)',
+              borderColor: isLogoutHovered ? '#be123c' : 'rgba(239, 68, 68, 0.2)',
+              transform: isLogoutHovered ? 'translateY(-2px)' : 'translateY(0)',
+              boxShadow: isLogoutHovered ? '0 4px 12px rgba(190, 18, 60, 0.2)' : 'none',
+            }} 
+            onMouseEnter={() => setIsLogoutHovered(true)}
+            onMouseLeave={() => setIsLogoutHovered(false)}
+            onClick={handleLogout}
+          >
+            <span style={{ 
+              display: 'inline-block',
+              transition: 'transform 0.3s ease',
+              transform: isLogoutHovered ? 'rotate(20deg) scale(1.2)' : 'rotate(0)' 
+            }}>👋</span> 
+            Logout
+          </button>
+        </div>
       </header>
 
       <div style={styles.mainContainer}>
-        {/* SIDEBAR WITH IMAGE BACKGROUND */}
         <aside style={styles.sidebar}>
           <nav style={styles.nav}>
             <SidebarLink to="/dashboard" label="Dashboard" icon="📊" />
@@ -43,7 +82,6 @@ const Layout = ({ onLogout }) => {
           </nav>
         </aside>
 
-        {/* MAIN CONTENT AREA */}
         <main style={styles.mainContent}>
           <Outlet />
         </main>
@@ -52,11 +90,11 @@ const Layout = ({ onLogout }) => {
   );
 };
 
-// SidebarLink Component handling Hover and Transparent Active states
 const SidebarLink = ({ to, label, icon }) => {
   const [isHovered, setIsHovered] = useState(false);
   const location = useLocation();
   const isActive = location.pathname === to;
+  const highlight = isActive || isHovered;
 
   return (
     <Link 
@@ -69,111 +107,125 @@ const SidebarLink = ({ to, label, icon }) => {
         ...(isActive && styles.sidebarLinkActive),
       }}
     >
-      <span style={styles.icon}>{icon}</span>
-      <span style={styles.linkLabel}>{label}</span>
+      <span style={{
+        ...styles.icon,
+        color: highlight ? '#ffffff' : 'rgba(255, 255, 255, 0.5)',
+        transform: isHovered ? 'scale(1.15) rotate(5deg)' : 'scale(1)',
+        transition: 'all 0.3s ease'
+      }}>
+        {icon}
+      </span>
+      
+      <span style={{
+        ...styles.linkLabel,
+        color: highlight ? '#ffffff' : 'rgba(255, 255, 255, 0.5)',
+        fontWeight: highlight ? '600' : '400',
+        transition: 'all 0.3s ease'
+      }}>
+        {label}
+      </span>
+
       {isActive && <span style={styles.activeIndicator}>•</span>}
     </Link>
   );
 };
 
-// ==================== STYLES ====================
 const styles = {
   appContainer: {
     minHeight: '100vh',
-    background: '#f8fafc',
+    background: '#0f172a',
     fontFamily: 'Inter, -apple-system, sans-serif',
   },
   header: {
-    background: 'white',
-    padding: '0.8rem 2.5rem',
-    boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
+    background: 'rgba(240, 249, 255, 0.6)', 
+    backdropFilter: 'blur(20px) saturate(180%)',
+    WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+    padding: '0.6rem 2.5rem',
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
     position: 'sticky',
     top: 0,
     zIndex: 100,
-    borderBottom: '1px solid #e2e8f0',
+    borderBottom: '1px solid rgba(255, 255, 255, 0.4)',
+    boxShadow: '0 4px 30px rgba(0, 0, 0, 0.05)',
   },
-  logoSection: { display: 'flex', alignItems: 'center', gap: '12px' },
-  logoWrapper: { height: '40px', display: 'flex', alignItems: 'center' },
-  logoImage: { height: '100%', maxWidth: '150px', objectFit: 'contain' },
+  logoSection: { 
+    display: 'flex', 
+    alignItems: 'center', 
+    gap: '15px', 
+    cursor: 'pointer' 
+  },
+  logoWrapper: { 
+    height: '42px', width: '42px', display: 'flex', alignItems: 'center', 
+    justifyContent: 'center', background: '#ffffff', padding: '6px',
+    borderRadius: '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+  },
+  logoImage: { maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' },
   logoText: { 
-    fontSize: '1.3rem', 
+    fontSize: '1.25rem', 
     fontWeight: 800, 
-    color: '#1e293b',
-    letterSpacing: '-0.5px'
+    display: 'inline-block' 
   },
   logoutBtn: {
-    background: '#ef4444',
-    color: 'white',
-    border: 'none',
-    padding: '10px 18px',
-    borderRadius: '10px',
-    cursor: 'pointer',
-    fontWeight: '600',
-    fontSize: '0.9rem',
-    boxShadow: '0 4px 12px rgba(239, 68, 68, 0.2)',
-    transition: 'transform 0.2s ease',
+    color: '#be123c', 
+    border: '1px solid',
+    padding: '8px 16px',
+    borderRadius: '8px', 
+    cursor: 'pointer', 
+    fontWeight: '700',
+    transition: 'all 0.3s ease',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px'
   },
   mainContainer: { 
     display: 'flex', 
     minHeight: 'calc(100vh - 65px)' 
   },
-  
-  // SIDEBAR WITH GLASS OVERLAY
   sidebar: {
     width: '280px',
     backgroundImage: `linear-gradient(to bottom, rgba(15, 23, 42, 0.85), rgba(15, 23, 42, 0.95)), url(${sidebarBg})`,
     backgroundSize: 'cover',
     backgroundPosition: 'center',
-    backgroundAttachment: 'fixed', // Keeps image steady on scroll
+    backgroundAttachment: 'fixed',
     color: 'white',
     padding: '1.5rem 0',
     borderRight: '1px solid rgba(255, 255, 255, 0.1)',
   },
-  nav: { 
-    display: 'flex', 
-    flexDirection: 'column', 
-    gap: '6px', 
-    padding: '0 12px' 
+  nav: { display: 'flex', flexDirection: 'column', gap: '8px', padding: '0 12px' },
+  sidebarLink: { 
+    display: 'flex', alignItems: 'center', gap: '14px', padding: '12px 18px', 
+    textDecoration: 'none', borderRadius: '12px', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+    border: '1px solid transparent'
   },
-
-  // LINK DEFAULT STATE
-  sidebarLink: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '14px',
-    padding: '14px 18px',
-    color: 'rgba(255, 255, 255, 0.6)', // Faded when not selected
-    textDecoration: 'none',
-    borderRadius: '12px',
-    fontWeight: '500',
-    fontSize: '0.95rem',
-    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-    border: '1px solid transparent',
+  sidebarLinkHover: { 
+    background: 'rgba(255, 255, 255, 0.05)',
+    transform: 'translateX(6px)', 
   },
-
-  // HOVER EFFECT
-  sidebarLinkHover: {
-    background: 'rgba(255, 255, 255, 0.1)',
-    color: '#ffffff',
-    transform: 'translateX(5px)',
+  sidebarLinkActive: { 
+    background: 'rgba(59, 130, 246, 0.15)', 
+    border: '1px solid rgba(59, 130, 246, 0.3)',
+    boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1)'
   },
-
-  // ✅ TRANSPARENT ACTIVE STATE (No Blue)
-  sidebarLinkActive: {
-    background: 'rgba(255, 255, 255, 0.12)', // Subtle highlight
-    color: '#ffffff',
-    fontWeight: '700',
-    border: '1px solid rgba(255, 255, 255, 0.3)', // Frosted glass border
-    backdropFilter: 'blur(8px)',
-    WebkitBackdropFilter: 'blur(8px)',
+  icon: { fontSize: '1.2rem', display: 'inline-block' },
+  linkLabel: { fontSize: '0.95rem', letterSpacing: '0.3px' },
+  mainContent: { 
+    flex: 1, 
+    padding: '2rem', 
+    backgroundImage: `linear-gradient(rgba(15, 23, 42, 0.75), rgba(15, 23, 42, 0.85)), url(${bgImage})`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundAttachment: 'fixed', 
+    overflowY: 'auto',
+    color: '#ffffff'
   },
-
-  icon: { fontSize: '1.2rem' },
-  activeIndicator: { marginLeft: 'auto', fontSize: '1.5rem', lineHeight: 0 },
-  mainContent: { flex: 1, padding: '2.5rem', background: '#f8fafc', overflow: 'auto' },
+  activeIndicator: { 
+    marginLeft: 'auto', 
+    color: '#3b82f6', 
+    fontWeight: 'bold', 
+    fontSize: '1.2rem' 
+  }
 };
 
 export default Layout;

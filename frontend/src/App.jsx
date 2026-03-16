@@ -25,6 +25,13 @@ const pageStyles = {
     fontWeight: 600,
     cursor: 'pointer',
   },
+  // Added a base transparent page wrapper style
+  transparentPage: {
+    padding: '2rem 0', 
+    maxWidth: '1400px', 
+    margin: '0 auto',
+    background: 'transparent'
+  }
 };
 
 function App() {
@@ -48,7 +55,6 @@ function App() {
     localStorage.setItem("token", newToken);
     localStorage.setItem("userRole", newUser?.role);
     
-    // ✅ REDIRECT LOGIC: Admin to Dashboard, Employee to Tasks
     if (newUser?.role === "Admin") {
         window.location.href = "/dashboard";
     } else {
@@ -64,9 +70,7 @@ function App() {
   };
 
   const ProtectedRoute = ({ children }) => {
-    if (!token) {
-      return <Navigate to="/login" replace />;
-    }
+    if (!token) return <Navigate to="/login" replace />;
     return children;
   };
 
@@ -81,12 +85,9 @@ function App() {
     }
 
     return (
-      <div style={{ padding: '2rem 0', maxWidth: '1400px', margin: '0 auto' }}>
+      <div style={pageStyles.transparentPage}>
         <div style={{ marginBottom: '2rem', padding: '0 2.5rem' }}>
-          <button 
-            onClick={() => navigate("/meetings")}
-            style={pageStyles.backBtn}
-          >
+          <button onClick={() => navigate("/meetings")} style={pageStyles.backBtn}>
             ← Back to Meetings
           </button>
         </div>
@@ -97,18 +98,14 @@ function App() {
 
   const MeetingFormPage = () => {
     const navigate = useNavigate();
-    
     const handleSubmit = () => {
       alert("Meeting created successfully! 🎉");
       navigate("/dashboard");
     };
-
-    const handleCancel = () => {
-      navigate("/dashboard");
-    };
+    const handleCancel = () => navigate("/dashboard");
 
     return (
-      <div style={{ padding: '2rem 0', maxWidth: '900px', margin: '0 auto' }}>
+      <div style={{ ...pageStyles.transparentPage, maxWidth: '900px' }}>
         <div style={{ marginBottom: '2rem', padding: '0 2.5rem' }}>
           <button onClick={handleCancel} style={pageStyles.backBtn}>
             ← Back to Dashboard
@@ -120,307 +117,192 @@ function App() {
   };
 
   const AllMeetings = () => {
-  const [meetings, setMeetings] = useState([]);
-  const [filteredMeetings, setFilteredMeetings] = useState([]);
-  const [loading, setLoading] = useState(false);
+    const [meetings, setMeetings] = useState([]);
+    const [filteredMeetings, setFilteredMeetings] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [filters, setFilters] = useState({
+      searchText: "", dateFrom: "", dateTo: "", meetingId: "", createdBy: "", department: ""
+    });
 
-  const [filters, setFilters] = useState({
-    searchText: "",
-    dateFrom: "",
-    dateTo: "",
-    meetingId: "",
-    createdBy: "",
-    department: ""
-  });
+    const token = localStorage.getItem("token");
+    const navigate = useNavigate();
 
-  const token = localStorage.getItem("token");
-  const navigate = useNavigate();
-
-  const styles = {
-    container: {
-      maxWidth: "1400px",
-      margin: "0 auto"
-    },
-
-    header: {
-      background: "white",
-      padding: "25px",
-      borderRadius: "18px",
-      marginBottom: "20px",
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      boxShadow: "0 5px 20px rgba(0,0,0,0.08)"
-    },
-
-    newBtn: {
-      background: "linear-gradient(135deg,#667eea,#764ba2)",
-      color: "white",
-      padding: "10px 22px",
-      borderRadius: "10px",
-      textDecoration: "none",
-      fontWeight: "600"
-    },
-
-    filterBox: {
-      background: "white",
-      padding: "20px",
-      borderRadius: "18px",
-      marginBottom: "20px",
-      boxShadow: "0 5px 20px rgba(0,0,0,0.08)"
-    },
-
-    filterGrid: {
-      display: "grid",
-      gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))",
-      gap: "12px"
-    },
-
-    input: {
-      padding: "10px",
-      borderRadius: "8px",
-      border: "1px solid #ddd"
-    },
-
-    clearBtn: {
-      background: "#ef4444",
-      color: "white",
-      border: "none",
-      borderRadius: "8px",
-      padding: "10px",
-      cursor: "pointer"
-    },
-
-    grid: {
-      display: "grid",
-      gridTemplateColumns: "repeat(auto-fill,minmax(350px,1fr))",
-      gap: "20px"
-    },
-
-    card: {
-      background: "white",
-      padding: "22px",
-      borderRadius: "16px",
-      border: "1px solid #e5e7eb",
-      cursor: "pointer",
-      transition: "0.25s",
-      boxShadow: "0 5px 18px rgba(0,0,0,0.08)"
-    },
-
-    title: {
-      fontSize: "18px",
-      fontWeight: "700",
-      marginBottom: "8px"
-    },
-
-    badge: {
-      display: "inline-block",
-      background: "#e2e8f0",
-      padding: "5px 12px",
-      borderRadius: "15px",
-      fontSize: "13px",
-      marginTop: "6px"
-    }
-  };
-
-  useEffect(() => {
-    if (!token) return;
-
-    const fetchMeetings = async () => {
-      try {
-        setLoading(true);
-
-        const API_URL =
-          import.meta.env.VITE_API_URL || "http://localhost:5001";
-
-        const res = await fetch(`${API_URL}/api/meetings`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-
-        const data = await res.json();
-
-        const meetingsData = data.success ? data.data.filter(Boolean) : [];
-
-        setMeetings(meetingsData);
-        setFilteredMeetings(meetingsData);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
+    const styles = {
+      pageWrapper: {
+        width: "100%",
+        minHeight: "100vh", 
+        // REMOVED: background image and linear gradient
+        background: "transparent", 
+        padding: "40px 20px",
+        boxSizing: "border-box",
+        margin: 0,
+        position: "relative"
+      },
+      container: { maxWidth: "1250px", margin: "0 auto" },
+      header: {
+        background: "rgba(255, 255, 255, 0.15)", // Frosted glass
+        backdropFilter: "blur(12px)",
+        padding: "25px",
+        borderRadius: "20px",
+        marginBottom: "20px",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
+        border: "1px solid rgba(255,255,255,0.1)",
+        color: "white"
+      },
+      newBtn: {
+        background: "linear-gradient(135deg,#6366f1,#a855f7)",
+        color: "white",
+        padding: "12px 24px",
+        borderRadius: "12px",
+        textDecoration: "none",
+        fontWeight: "600",
+        boxShadow: "0 4px 15px rgba(99, 102, 241, 0.4)"
+      },
+      filterBox: {
+        background: "rgba(255, 255, 255, 0.08)",
+        backdropFilter: "blur(10px)",
+        padding: "20px",
+        borderRadius: "20px",
+        marginBottom: "25px",
+        border: "1px solid rgba(255,255,255,0.1)",
+        color: "white"
+      },
+      filterGrid: {
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))",
+        gap: "12px"
+      },
+      input: {
+        padding: "12px",
+        borderRadius: "10px",
+        border: "1px solid rgba(255,255,255,0.2)",
+        background: "rgba(255,255,255,0.1)",
+        color: "white",
+        outline: "none",
+      },
+      clearBtn: {
+        background: "rgba(239, 68, 68, 0.2)",
+        color: "#f87171",
+        border: "1px solid rgba(239, 68, 68, 0.3)",
+        borderRadius: "10px",
+        padding: "10px",
+        cursor: "pointer",
+        fontWeight: "600"
+      },
+      grid: {
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fill,minmax(320px,1fr))",
+        gap: "25px"
+      },
+      card: {
+        background: "rgba(255, 255, 255, 0.1)",
+        backdropFilter: "blur(16px)",
+        padding: "24px",
+        borderRadius: "20px",
+        border: "1px solid rgba(255,255,255,0.1)",
+        cursor: "pointer",
+        transition: "all 0.3s ease",
+        color: "white",
+        boxShadow: "0 10px 30px rgba(0,0,0,0.1)"
+      },
+      cardTitle: { fontSize: "1.2rem", fontWeight: "700", marginBottom: "10px", color: "#fff" },
+      badge: {
+        display: "inline-block",
+        background: "rgba(255, 255, 255, 0.2)",
+        color: "white",
+        padding: "6px 14px",
+        borderRadius: "20px",
+        fontSize: "0.85rem",
+        marginTop: "12px",
+        border: "1px solid rgba(255, 255, 255, 0.1)"
       }
     };
 
-    fetchMeetings();
-  }, [token]);
+    useEffect(() => {
+      if (!token) return;
+      const fetchMeetings = async () => {
+        try {
+          setLoading(true);
+          const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001";
+          const res = await fetch(`${API_URL}/api/meetings`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          const data = await res.json();
+          const meetingsData = data.success ? data.data.filter(Boolean) : [];
+          setMeetings(meetingsData);
+          setFilteredMeetings(meetingsData);
+        } catch (err) { console.error(err); } 
+        finally { setLoading(false); }
+      };
+      fetchMeetings();
+    }, [token]);
 
-  useEffect(() => {
-    const filtered = meetings.filter((m) => {
+    useEffect(() => {
+      const filtered = meetings.filter((m) => {
+        const search = filters.searchText.toLowerCase();
+        const datePart = m.meeting_date?.split(" ")[0] || "";
+        return (
+          (!search || m.title?.toLowerCase().includes(search) || m.department?.toLowerCase().includes(search)) &&
+          (!filters.dateFrom || datePart >= filters.dateFrom) &&
+          (!filters.dateTo || datePart <= filters.dateTo) &&
+          (!filters.department || m.department?.toLowerCase().includes(filters.department.toLowerCase()))
+        );
+      });
+      setFilteredMeetings(filtered);
+    }, [filters, meetings]);
 
-      const search = filters.searchText.toLowerCase();
-      const datePart = m.meeting_date?.split(" ")[0] || "";
+    const handleChange = (e) => setFilters({ ...filters, [e.target.name]: e.target.value });
+    const clearFilters = () => setFilters({ searchText: "", dateFrom: "", dateTo: "", meetingId: "", createdBy: "", department: "" });
 
-      return (
-        (!search ||
-          m.title?.toLowerCase().includes(search) ||
-          m.description?.toLowerCase().includes(search) ||
-          m.department?.toLowerCase().includes(search)) &&
-
-        (!filters.dateFrom || datePart >= filters.dateFrom) &&
-        (!filters.dateTo || datePart <= filters.dateTo) &&
-
-        (!filters.meetingId ||
-          m.id.toString().includes(filters.meetingId)) &&
-
-        (!filters.createdBy ||
-          m.created_by?.toString().includes(filters.createdBy)) &&
-
-        (!filters.department ||
-          m.department?.toLowerCase().includes(filters.department.toLowerCase()))
-      );
-    });
-
-    setFilteredMeetings(filtered);
-  }, [filters, meetings]);
-
-  const handleChange = (e) => {
-    setFilters({ ...filters, [e.target.name]: e.target.value });
-  };
-
-  const clearFilters = () => {
-    setFilters({
-      searchText: "",
-      dateFrom: "",
-      dateTo: "",
-      meetingId: "",
-      createdBy: "",
-      department: ""
-    });
-  };
-
-  const openMeeting = (id) => {
-    navigate(`/mom/${id}`);
-  };
-
-  return (
-    <div style={styles.container}>
-
-      {/* HEADER */}
-      <div style={styles.header}>
-        <div>
-          <h1>📋 All Meetings</h1>
-          <p>{filteredMeetings.length} meetings found</p>
-        </div>
-
-        <a href="/meetings/create" style={styles.newBtn}>
-          ➕ Create Meeting
-        </a>
-      </div>
-
-      {/* FILTER PANEL */}
-      <div style={styles.filterBox}>
-
-        <h3>🔎 Advanced Search</h3>
-
-        <div style={styles.filterGrid}>
-
-          <input
-            style={styles.input}
-            name="searchText"
-            placeholder="Search title / description"
-            value={filters.searchText}
-            onChange={handleChange}
-          />
-
-          <input
-            style={styles.input}
-            type="date"
-            name="dateFrom"
-            value={filters.dateFrom}
-            onChange={handleChange}
-          />
-
-          <input
-            style={styles.input}
-            type="date"
-            name="dateTo"
-            value={filters.dateTo}
-            onChange={handleChange}
-          />
-
-          <input
-            style={styles.input}
-            name="meetingId"
-            placeholder="Meeting ID"
-            value={filters.meetingId}
-            onChange={handleChange}
-          />
-
-          <input
-            style={styles.input}
-            name="createdBy"
-            placeholder="Created By"
-            value={filters.createdBy}
-            onChange={handleChange}
-          />
-
-          <input
-            style={styles.input}
-            name="department"
-            placeholder="Department"
-            value={filters.department}
-            onChange={handleChange}
-          />
-
-          <button onClick={clearFilters} style={styles.clearBtn}>
-            Clear Filters
-          </button>
-        </div>
-      </div>
-
-      {/* MEETING CARDS */}
-      {loading ? (
-        <p>Loading meetings...</p>
-      ) : filteredMeetings.length === 0 ? (
-        <p>No meetings found</p>
-      ) : (
-        <div style={styles.grid}>
-
-          {filteredMeetings.map((meeting) => (
-
-            <div
-              key={meeting.id}
-              style={styles.card}
-              onClick={() => openMeeting(meeting.id)}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "translateY(-5px)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "translateY(0)";
-              }}
-            >
-
-              <div style={styles.title}>
-                {meeting.title}
-              </div>
-
-              <div>
-                📅 {new Date(meeting.meeting_date).toLocaleDateString("en-IN")}
-              </div>
-
-              <div style={styles.badge}>
-                🏢 {meeting.department || "No Department"}
-              </div>
-
+    return (
+      <div style={styles.pageWrapper}>
+        <style>{`
+          input::placeholder { color: rgba(255,255,255,0.6) !important; }
+          input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
+        `}</style>
+        <div style={styles.container}>
+          <div style={styles.header}>
+            <div>
+              <h1 style={{margin: 0}}>📋 All Meetings</h1>
+              <p style={{margin: "5px 0 0", opacity: 0.8}}>{filteredMeetings.length} meetings archived</p>
             </div>
+            <a href="/meetings/create" style={styles.newBtn}>➕ Create Meeting</a>
+          </div>
 
-          ))}
+          <div style={styles.filterBox}>
+            <div style={styles.filterGrid}>
+              <input style={styles.input} name="searchText" placeholder="Search title..." value={filters.searchText} onChange={handleChange} />
+              <input style={styles.input} type="date" name="dateFrom" value={filters.dateFrom} onChange={handleChange} />
+              <input style={styles.input} type="date" name="dateTo" value={filters.dateTo} onChange={handleChange} />
+              <input style={styles.input} name="department" placeholder="Department" value={filters.department} onChange={handleChange} />
+              <button onClick={clearFilters} style={styles.clearBtn}>Clear</button>
+            </div>
+          </div>
 
+          {loading ? <p style={{color: 'white', textAlign: 'center'}}>Loading meetings...</p> : (
+            <div style={styles.grid}>
+              {filteredMeetings.map((meeting) => (
+                <div 
+                  key={meeting.id} 
+                  style={styles.card} 
+                  onClick={() => navigate(`/mom/${meeting.id}`)}
+                  onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-8px)"}
+                  onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
+                >
+                  <div style={styles.cardTitle}>{meeting.title}</div>
+                  <div style={{opacity: 0.7, fontSize: '0.9rem'}}>📅 {new Date(meeting.meeting_date).toLocaleDateString("en-IN")}</div>
+                  <div style={styles.badge}>🏢 {meeting.department || "General"}</div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-      )}
-
-    </div>
-  );
-};
+      </div>
+    );
+  };
 
   return (
     <BrowserRouter>
@@ -437,18 +319,13 @@ function App() {
             </ProtectedRoute>
           }
         >
-          {/* ✅ CHILD ROUTES RENDER INSIDE THE <OUTLET /> IN LAYOUT */}
           <Route index element={<Navigate to="/dashboard" />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="meetings/create" element={<MeetingFormPage />} />
           <Route path="meetings" element={<AllMeetings />} />
           <Route path="mom/:meetingId" element={<MomPointFormPage />} />
           <Route path="employee-tasks" element={<EmployeeDashboard />} />
-          
-          {/* ✅ MISSING ROUTE ADDED HERE */}
           <Route path="reports" element={<Reports />} /> 
-
-          <Route path="/meetings/:id/mom" element={<MomPointForm />} />
         </Route>
       </Routes>
     </BrowserRouter>

@@ -31,10 +31,8 @@ const LoginPage = ({ onLoginSuccess }) => {
 
   return (
     <div style={styles.container}>
-      {/* 1. INJECTING GLOBAL CSS FOR ANIMATIONS & HOVER */}
       <style>
         {`
-          /* Keyframes for the entrance animation (Fade In and Move Left) */
           @keyframes slideInRight {
             from {
               opacity: 0;
@@ -46,19 +44,16 @@ const LoginPage = ({ onLoginSuccess }) => {
             }
           }
 
-          /* Entrance Animation Class */
           .animate-entrance {
             animation: slideInRight 1s ease-out forwards;
           }
 
-          /* Hover effect for Input Fields */
           .input-hover:focus {
             border-color: rgba(255, 255, 255, 0.8) !important;
             background: rgba(255, 255, 255, 0.3) !important;
             box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
           }
 
-          /* Hover effect for the Sign In Button */
           .btn-hover:hover {
             transform: translateY(-3px);
             box-shadow: 0 10px 20px rgba(0,0,0,0.2);
@@ -71,13 +66,12 @@ const LoginPage = ({ onLoginSuccess }) => {
         `}
       </style>
 
-      {/* 2. Added animate-entrance class to the card */}
       <div style={styles.loginCard} className="animate-entrance">
         <div style={styles.logoSection}>
           <div style={styles.logoWrapper}>
             <img 
               src={logoImg} 
-              alt="SLR Metaliks Logo" 
+              alt="Company Logo" 
               style={styles.logoImage} 
             />
           </div>
@@ -88,7 +82,6 @@ const LoginPage = ({ onLoginSuccess }) => {
         <form onSubmit={handleLogin} style={styles.form}>
           <div style={styles.inputGroup}>
             <label style={styles.label}>Email</label>
-            {/* 3. Added input-hover class */}
             <input
               type="email"
               value={email}
@@ -103,7 +96,6 @@ const LoginPage = ({ onLoginSuccess }) => {
 
           <div style={styles.inputGroup}>
             <label style={styles.label}>Password</label>
-            {/* 3. Added input-hover class */}
             <input
               type="password"
               value={password}
@@ -118,7 +110,6 @@ const LoginPage = ({ onLoginSuccess }) => {
 
           {error && <div style={styles.error}>{error}</div>}
 
-          {/* 4. Added btn-hover class */}
           <button 
             type="submit" 
             style={styles.loginBtn}
@@ -138,14 +129,13 @@ const styles = {
     minHeight: '100vh',
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'flex-end', // Aligns the card to the right
+    justifyContent: 'flex-end',
     backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), url(${bgImage})`,
     backgroundSize: 'cover',
     backgroundPosition: 'center',
-    // 5. Pushed further right by reducing right padding from 10% to 5%
     padding: '0 5% 0 0', 
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif',
-    overflow: 'hidden', // Prevents scrollbars during entrance animation
+    overflow: 'hidden',
   },
   loginCard: {
     background: 'rgba(255, 255, 255, 0.12)', 
@@ -153,27 +143,38 @@ const styles = {
     borderRadius: '24px',
     boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.3)',
     width: '100%',
-    maxWidth: '380px', // Slightly narrower for cleaner right align
+    maxWidth: '380px',
     backdropFilter: 'blur(15px)', 
     border: '1px solid rgba(255, 255, 255, 0.15)',
     textAlign: 'left',
-    opacity: 0, // Set initial opacity for the animation to handle
+    opacity: 0,
   },
   logoSection: {
     textAlign: 'center',
     marginBottom: '2rem',
   },
+  
+  // ✅ UPDATED: Solid background to make the logo pop
   logoWrapper: {
     display: 'flex',
     justifyContent: 'center',
     marginBottom: '1rem',
+    background: '#ffffff', // Solid white background
+    padding: '10px',
+    borderRadius: '12px',
+    width: 'fit-content',
+    margin: '0 auto 1rem auto',
+    boxShadow: '0 4px 10px rgba(0,0,0,0.1)'
   },
+  
+  // ✅ UPDATED: Removed the brightness/invert filter
   logoImage: {
-    height: '60px',
-    filter: 'brightness(0) invert(1)',
+    height: '50px',
+    objectFit: 'contain'
   },
+  
   title: {
-    fontSize: '1.9rem', // Slightly smaller title
+    fontSize: '1.9rem',
     fontWeight: 800,
     color: '#ffffff', 
     margin: '0 0 0.5rem 0',
@@ -207,7 +208,7 @@ const styles = {
     background: 'rgba(255, 255, 255, 0.15)',
     color: '#ffffff',
     outline: 'none',
-    transition: 'all 0.3s ease', // Smooth transition for hover effects
+    transition: 'all 0.3s ease',
   },
   error: {
     background: 'rgba(220, 38, 38, 0.2)',
@@ -225,7 +226,6 @@ const styles = {
     fontSize: '1.1rem',
     fontWeight: 700,
     cursor: 'pointer',
-    // Removed inline transform transition, handling in global CSS now
     transition: 'all 0.3s ease', 
     marginTop: '1rem',
   },
