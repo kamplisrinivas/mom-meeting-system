@@ -66,8 +66,15 @@ app.get("/api/auth/me", authMiddleware, (req, res) => {
 
 /* ================= START SERVER ================= */
 
+// const PORT = process.env.PORT || 5001;
+
+// app.listen(PORT, () => {
+//   console.log(`🚀 Server running on port ${PORT}`);
+// });
+
 const PORT = process.env.PORT || 5001;
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+// Adding '0.0.0.0' allows access from your local network IP (192.168.11.175)
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server running on http://192.168.11.175:${PORT}`);
 });
