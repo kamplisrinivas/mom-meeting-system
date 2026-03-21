@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import ActionItemForm from "../pages/ActionItemForm";
 
-const API_URL = "http://localhost:5001";
+const API_URL = "http://172.168.11.175:5001";
 
 export default function MomPointForm({ meetingId, token }) {
   const [pointText, setPointText] = useState("");

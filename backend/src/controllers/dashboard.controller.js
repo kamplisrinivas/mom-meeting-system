@@ -64,9 +64,9 @@ exports.getRecentMeetings = async (req, res) => {
   try {
     const { startDate, endDate, department } = req.query;
 
-    // Use DATE() in SQL to ensure the "00:00:00" in your data doesn't cause issues
+    // ✅ FIXED: Added meeting_time to the SELECT list
     let query = `
-      SELECT id, title, meeting_date, department, meeting_type 
+      SELECT id, title, meeting_date, meeting_time, department, meeting_type 
       FROM meetings 
       WHERE 1=1
     `;
@@ -82,12 +82,13 @@ exports.getRecentMeetings = async (req, res) => {
       params.push(department);
     }
 
-    query += " ORDER BY meeting_date DESC LIMIT 10";
+    // ✅ IMPROVED: Sort by date AND then by time so the newest is always on top
+    query += " ORDER BY meeting_date DESC, meeting_time DESC LIMIT 10";
 
     const [rows] = await db.query(query, params);
     res.json({ success: true, data: rows });
   } catch (err) {
-    console.error(err);
+    console.error("❌ Backend Error:", err);
     res.status(500).json({ success: false, error: err.message });
   }
 };
