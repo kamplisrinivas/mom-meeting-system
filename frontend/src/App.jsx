@@ -204,7 +204,7 @@ const MeetingFormPage = () => {
       const fetchMeetings = async () => {
         try {
           setLoading(true);
-          const API_URL = import.meta.env.VITE_API_URL || "http://192.168.11.175:5001";
+          const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001";
           const res = await fetch(`${API_URL}/api/meetings`, {
             headers: { Authorization: `Bearer ${token}` }
           });

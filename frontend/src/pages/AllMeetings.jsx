@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useMemo } from "react";
 // 1. Ensure this import is valid. Check your console for "Module not found"
 import bgImage from "../assets/img/allmeetings.jpg"; 
 
-const API_URL = import.meta.env.VITE_API_URL || "http://192.168.11.175:5001";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001";
 
 export default function AllMeetings() {
   const [meetings, setMeetings] = useState([]);

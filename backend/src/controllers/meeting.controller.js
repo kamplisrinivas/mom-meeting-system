@@ -90,38 +90,58 @@ exports.createMeeting = async (req, res) => {
         (emp) => emp.CompanyEmail && emp.CompanyEmail.includes("@")
       );
 
-      console.log(`📧 Valid emails: ${validEmployees.length}`);
+    if (validEmployees.length === 0) {
+      return res.status(201).json({
+        success: true,
+        message: "Meeting created (No valid emails)",
+        meetingId,
+      });
+    }
 
-      if (validEmployees.length > 0) {
-        const employeeEmails = validEmployees
-  .map((e) => e.CompanyEmail)
-  .filter((email) => typeof email === "string");
+    // ==================================
+    // SEND EMAILS
+    // ==================================
 
-        const htmlContent = `
-        <div style="background:#f2f2f2;padding:30px;font-family:Arial,sans-serif;">
-          <div style="max-width:650px;margin:auto;background:#ffffff;border-radius:10px;border:2px solid #a30000;">
-
-          <div style="text-align:center; padding:15px; background:#fff;">
-      <img src="cid:slrmlogo" alt="SLR Metaliks Logo" style="width:150px; height:auto;">
-    </div>
-            
-            <div style="background:#a30000;color:white;padding:15px;">
-              <h2>📌 Rescheduled Meeting Invitation</h2>
-              <p>Scheduled by: ${creatorName}</p>
-            </div>
-
-            <div style="padding:25px;color:#333;line-height:1.6;">
-              <p style="font-size:16px;color:#d9534f;font-weight:bold;margin-top:0;">
-                Important: The Reschedule for this meeting has been updated.
-              </p>
+    const emailPromises = validEmployees.map((emp) =>
+  sendEmail(
+    emp.CompanyEmail,
+    ` Meeting Notification: ${title}`,
+    `
+            <div style="background:#f2f2f2;padding:30px;font-family:Arial,sans-serif;">
               
-              <hr style="border:0;border-top:1px solid #eee;margin:20px 0;"/>
-              <p><strong>Title:</strong> ${title}</p>
-              <p><strong>Date:</strong> ${meeting_date}</p>
-              <p><strong>Time:</strong> ${meeting_time || "Not specified"}</p>
-              <p><strong>Type:</strong> ${meeting_type}</p>
-              <p><strong>Venue:</strong> ${venue || "-"}</p>
-              <p><strong>Department:</strong> ${department}</p>
+              <div style="max-width:650px;margin:auto;background:#ffffff;border-radius:10px;border:2px solid #a30000;overflow:hidden;">
+                
+                <!-- Header -->
+                <div style="background:#a30000;color:white;padding:15px 20px;">
+          <table width="100%">
+            <tr>
+
+              <td style="width:60px;">
+                <img src="cid:slrmlogo" style="width:50px;height:auto;" />
+              </td>
+
+              <td style="text-align:center;">
+                <h2 style="margin:0;">📌 Meeting Invitation</h2>
+                <p style="margin:5px 0 0 0;font-size:14px;">
+                  Scheduled by: ${creatorName || "Management"}
+                </p>
+              </td>
+
+              <td style="width:60px;"></td>
+
+            </tr>
+          </table>
+        </div>
+
+        <!-- Body -->
+        <div style="padding:25px;color:#333;font-size:14px;line-height:1.6;">
+          
+          <p><strong>Title:</strong> ${title}</p>
+          <p><strong>Date:</strong> ${meeting_date}</p>
+          <p><strong>Time:</strong> ${meeting_time || "Not specified"}</p>
+          <p><strong>Type:</strong> ${meeting_type}</p>
+          <p><strong>Platform / Venue:</strong> ${venue || "-"}</p>
+          <p><strong>Department:</strong> ${department}</p>
 
               <br/>
               <p><strong>Description:</strong></p>
@@ -134,35 +154,17 @@ exports.createMeeting = async (req, res) => {
               Automated invitation from <strong>SLR Metaliks MOM System</strong>
             </div>
 
-          </div>
-        </div>
-        `;
+      </div>
 
-        // ✅ SEND EMAIL (TO + CC)
-        await sendMail(
-  employeeEmails.join(","), // ✅ string ONLY
-  `Rescheduled Meeting Notification: ${title}`,
-  htmlContent,              // must be string
-  null,
-  ["ravi.joshi@slrm.in", "mdoffice@slrm.in"],
-  null
+    </div>
+    `
+  )
 );
 
-        console.log("🚀 Email sent (TO + CC)");
+    const results = await Promise.allSettled(emailPromises);
 
-        return res.status(201).json({
-          success: true,
-          message: "Meeting created and emails sent",
-          meetingId,
-          mailSummary: {
-            total: employeeEmails.length,
-            sent: employeeEmails.length
-          }
-        });
-      }
-    } else {
-      console.log("🚫 No employees selected. Email skipped.");
-    }
+    const sent = results.filter((r) => r.status === "fulfilled").length;
+    const failed = results.filter((r) => r.status === "rejected").length;
 
     return res.status(201).json({
       success: true,
@@ -176,10 +178,7 @@ exports.createMeeting = async (req, res) => {
   }
 };
 
-// ===============================
-// GET DEPARTMENT EMPLOYEES
-// Only return employees with certain designations
-// ===============================
+
 exports.getDepartmentEmployees = async (req, res) => {
   try {
     const { departments } = req.body;

@@ -4,7 +4,11 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { FaFilter, FaCalendarAlt, FaUsers, FaTag, FaFileExcel, FaFilePdf, FaUndo } from 'react-icons/fa';
 
+<<<<<<< HEAD
 const API = "http://192.168.11.175:5001/api";
+=======
+const API = "http://192.168.1.25:5001/api";
+>>>>>>> 77fbe1fcfc66f28671e82790ee50a7778320adf8
 
 export default function Reports() {
   const [meetings, setMeetings] = useState([]);
