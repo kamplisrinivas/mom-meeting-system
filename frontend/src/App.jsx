@@ -15,6 +15,9 @@ import Dashboard from "./pages/Dashboard";
 import MeetingForm from "./components/MeetingForm";
 import Reports from "./pages/Reports";
 
+// --- NEW IMPORTS ---
+import RescheduleMeeting from "./pages/RescheduleMeeting"; 
+
 const pageStyles = {
   backBtn: {
     background: 'linear-gradient(135deg, #64748b, #475569)',
@@ -25,7 +28,6 @@ const pageStyles = {
     fontWeight: 600,
     cursor: 'pointer',
   },
-  // Added a base transparent page wrapper style
   transparentPage: {
     padding: '2rem 0', 
     maxWidth: '1400px', 
@@ -74,6 +76,22 @@ function App() {
     return children;
   };
 
+  // --- WRAPPERS ---
+
+  const ReschedulePage = () => {
+    const navigate = useNavigate();
+    return (
+      <div style={pageStyles.transparentPage}>
+        <div style={{ marginBottom: '2rem', padding: '0 2.5rem' }}>
+          <button onClick={() => navigate("/dashboard")} style={pageStyles.backBtn}>
+            ← Back to Dashboard
+          </button>
+        </div>
+        <RescheduleMeeting />
+      </div>
+    );
+  };
+
   const MomPointFormPage = () => {
     const { meetingId } = useParams();
     const token = localStorage.getItem("token");
@@ -96,12 +114,15 @@ function App() {
     );
   };
 
-  const MeetingFormPage = () => {
+const MeetingFormPage = () => {
     const navigate = useNavigate();
+    const { id } = useParams(); 
+
     const handleSubmit = () => {
-      alert("Meeting created successfully! 🎉");
+      alert(id ? "Meeting updated successfully! 🎉" : "Meeting created successfully! 🎉");
       navigate("/dashboard");
     };
+    
     const handleCancel = () => navigate("/dashboard");
 
     return (
@@ -111,11 +132,17 @@ function App() {
             ← Back to Dashboard
           </button>
         </div>
-        <MeetingForm title="➕ Create New Meeting" onSubmit={handleSubmit} onCancel={handleCancel} />
+        {/* ADD THE key={id} HERE */}
+        <MeetingForm 
+          key={id || "new"} 
+          id={id} 
+          title={id ? "✏️ Edit Meeting" : "➕ Create New Meeting"} 
+          onSubmit={handleSubmit} 
+          onCancel={handleCancel} 
+        />
       </div>
     );
   };
-
   const AllMeetings = () => {
     const [meetings, setMeetings] = useState([]);
     const [filteredMeetings, setFilteredMeetings] = useState([]);
@@ -128,19 +155,10 @@ function App() {
     const navigate = useNavigate();
 
     const styles = {
-      pageWrapper: {
-        width: "100%",
-        minHeight: "100vh", 
-        // REMOVED: background image and linear gradient
-        background: "transparent", 
-        padding: "40px 20px",
-        boxSizing: "border-box",
-        margin: 0,
-        position: "relative"
-      },
+      pageWrapper: { width: "100%", minHeight: "100vh", background: "transparent", padding: "40px 20px" },
       container: { maxWidth: "1250px", margin: "0 auto" },
       header: {
-        background: "rgba(255, 255, 255, 0.15)", // Frosted glass
+        background: "rgba(255, 255, 255, 0.15)",
         backdropFilter: "blur(12px)",
         padding: "25px",
         borderRadius: "20px",
@@ -148,8 +166,6 @@ function App() {
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
-        boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
-        border: "1px solid rgba(255,255,255,0.1)",
         color: "white"
       },
       newBtn: {
@@ -159,66 +175,28 @@ function App() {
         borderRadius: "12px",
         textDecoration: "none",
         fontWeight: "600",
-        boxShadow: "0 4px 15px rgba(99, 102, 241, 0.4)"
       },
       filterBox: {
         background: "rgba(255, 255, 255, 0.08)",
-        backdropFilter: "blur(10px)",
         padding: "20px",
         borderRadius: "20px",
         marginBottom: "25px",
-        border: "1px solid rgba(255,255,255,0.1)",
         color: "white"
       },
-      filterGrid: {
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))",
-        gap: "12px"
-      },
-      input: {
-        padding: "12px",
-        borderRadius: "10px",
-        border: "1px solid rgba(255,255,255,0.2)",
-        background: "rgba(255,255,255,0.1)",
-        color: "white",
-        outline: "none",
-      },
-      clearBtn: {
-        background: "rgba(239, 68, 68, 0.2)",
-        color: "#f87171",
-        border: "1px solid rgba(239, 68, 68, 0.3)",
-        borderRadius: "10px",
-        padding: "10px",
-        cursor: "pointer",
-        fontWeight: "600"
-      },
-      grid: {
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fill,minmax(320px,1fr))",
-        gap: "25px"
-      },
+      filterGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: "12px" },
+      input: { padding: "12px", borderRadius: "10px", background: "rgba(255,255,255,0.1)", color: "white", outline: "none", border: "1px solid rgba(255,255,255,0.2)" },
+      clearBtn: { background: "rgba(239, 68, 68, 0.2)", color: "#f87171", borderRadius: "10px", padding: "10px", cursor: "pointer" },
+      grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(320px,1fr))", gap: "25px" },
       card: {
         background: "rgba(255, 255, 255, 0.1)",
-        backdropFilter: "blur(16px)",
         padding: "24px",
         borderRadius: "20px",
-        border: "1px solid rgba(255,255,255,0.1)",
         cursor: "pointer",
         transition: "all 0.3s ease",
         color: "white",
-        boxShadow: "0 10px 30px rgba(0,0,0,0.1)"
       },
-      cardTitle: { fontSize: "1.2rem", fontWeight: "700", marginBottom: "10px", color: "#fff" },
-      badge: {
-        display: "inline-block",
-        background: "rgba(255, 255, 255, 0.2)",
-        color: "white",
-        padding: "6px 14px",
-        borderRadius: "20px",
-        fontSize: "0.85rem",
-        marginTop: "12px",
-        border: "1px solid rgba(255, 255, 255, 0.1)"
-      }
+      cardTitle: { fontSize: "1.2rem", fontWeight: "700", marginBottom: "10px" },
+      badge: { display: "inline-block", background: "rgba(255, 255, 255, 0.2)", padding: "6px 14px", borderRadius: "20px", fontSize: "0.85rem" }
     };
 
     useEffect(() => {
@@ -226,7 +204,7 @@ function App() {
       const fetchMeetings = async () => {
         try {
           setLoading(true);
-          const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001";
+          const API_URL = import.meta.env.VITE_API_URL || "http://192.168.11.175:5001";
           const res = await fetch(`${API_URL}/api/meetings`, {
             headers: { Authorization: `Bearer ${token}` }
           });
@@ -259,10 +237,6 @@ function App() {
 
     return (
       <div style={styles.pageWrapper}>
-        <style>{`
-          input::placeholder { color: rgba(255,255,255,0.6) !important; }
-          input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
-        `}</style>
         <div style={styles.container}>
           <div style={styles.header}>
             <div>
@@ -289,8 +263,6 @@ function App() {
                   key={meeting.id} 
                   style={styles.card} 
                   onClick={() => navigate(`/mom/${meeting.id}`)}
-                  onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-8px)"}
-                  onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
                 >
                   <div style={styles.cardTitle}>{meeting.title}</div>
                   <div style={{opacity: 0.7, fontSize: '0.9rem'}}>📅 {new Date(meeting.meeting_date).toLocaleDateString("en-IN")}</div>
@@ -326,6 +298,11 @@ function App() {
           <Route path="mom/:meetingId" element={<MomPointFormPage />} />
           <Route path="employee-tasks" element={<EmployeeDashboard />} />
           <Route path="reports" element={<Reports />} /> 
+          
+          {/* UPDATED ROUTES: Logic to handle Reschedule list and the Edit Form with ID */}
+          <Route path="reschedule" element={<ReschedulePage />} />
+          <Route path="edit-meeting/:id" element={<MeetingFormPage />} />
+          
         </Route>
       </Routes>
     </BrowserRouter>

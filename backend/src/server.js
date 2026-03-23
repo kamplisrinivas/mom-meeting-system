@@ -1,4 +1,5 @@
-require("dotenv").config();
+require("dotenv").config(); // MUST be first line
+
 const express = require("express");
 const cors = require("cors");
 
@@ -8,43 +9,42 @@ const authMiddleware = require("./middlewares/authMiddleware");
 const app = express();
 
 /* ================= MIDDLEWARE ================= */
-app.use(cors());
+app.use(cors({
+  origin: function (origin, callback) {
+    const allowedOrigins = [
+      "http://localhost:5173",
+      "http://192.168.11.175:5173",
+      "http://127.0.0.1:5173"
+    ];
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true // Crucial if you are passing Bearer tokens in headers
+}));
+
 app.use(express.json());
 
 /* ================= ROUTES ================= */
 
-const departmentRoutes = require("./routes/department.routes");
-app.use("/api/departments", departmentRoutes);
+app.use("/api/departments", require("./routes/department.routes"));
+app.use("/api/employees", require("./routes/employee.routes"));
+app.use("/api/auth", require("./routes/auth.routes"));
+app.use("/api/meetings", require("./routes/meeting.routes"));
+app.use("/api/mom", require("./routes/mom.routes"));
+app.use("/api/actions", require("./routes/action.routes"));
+app.use("/api/dashboard", require("./routes/dashboard.routes"));
+app.use("/api/reports", require("./routes/reportRoutes"));
+app.use("/api/categories", require("./routes/category.routes"));
+app.use("/api", require("./routes/dashboard.routes"));
 
-const employeeRoutes = require("./routes/employee.routes");
-app.use("/api/employees", employeeRoutes);
-
-const authRoutes = require("./routes/auth.routes");
-app.use("/api/auth", authRoutes);
-
-const meetingRoutes = require("./routes/meeting.routes");
-app.use("/api/meetings", meetingRoutes);
-
-const momRoutes = require("./routes/mom.routes");
-app.use("/api/mom", momRoutes);
-
-const actionRoutes = require("./routes/action.routes");
-app.use("/api/actions", actionRoutes);
-
-const dashboardRoutes = require("./routes/dashboard.routes");
-app.use("/api/dashboard", dashboardRoutes);
-
-/* ✅ REPORT ROUTES */
-const reportRoutes = require("./routes/reportRoutes");
-app.use("/api/reports", reportRoutes);
-
-// server.js
-const categoryRoutes = require("./routes/category.routes");
-app.use("/api/categories", categoryRoutes);
-
-const dashboardRecentRoutes = require("./routes/dashboard.routes"); // Use a new name here
-app.use("/api", dashboardRecentRoutes);
-
+const rescheduleRoutes = require("./routes/reschedule.routes");
+app.use("/api/reschedule", rescheduleRoutes);
 /* ================= TEST ROUTES ================= */
 
 app.get("/", (req, res) => {
@@ -66,15 +66,8 @@ app.get("/api/auth/me", authMiddleware, (req, res) => {
 
 /* ================= START SERVER ================= */
 
-// const PORT = process.env.PORT || 5001;
-
-// app.listen(PORT, () => {
-//   console.log(`🚀 Server running on port ${PORT}`);
-// });
-
 const PORT = process.env.PORT || 5001;
 
-// Adding '0.0.0.0' allows access from your local network IP (192.168.11.175)
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Server running on http://192.168.11.175:${PORT}`);
 });

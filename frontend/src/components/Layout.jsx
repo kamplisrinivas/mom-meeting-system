@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
 import { Outlet, useNavigate, Link, useLocation } from 'react-router-dom';
 import logoImg from "../assets/img/company-logo.png"; 
-import sidebarBg from "../assets/img/sidebar.jpg"; 
-import bgImage from "../assets/img/bgd.jpg"; 
+import sidebarBg from "../assets/img/side.jpg"; 
+import bgImage from "../assets/img/backgd.webp"; 
 
 const Layout = ({ onLogout }) => {
   const navigate = useNavigate();
-  
-  // State for Header Hovering
   const [isLogoHovered, setIsLogoHovered] = useState(false);
   const [isLogoutHovered, setIsLogoutHovered] = useState(false);
 
@@ -19,7 +17,6 @@ const Layout = ({ onLogout }) => {
   return (
     <div style={styles.appContainer}>
       <header style={styles.header}>
-        {/* LOGO SECTION WITH HOVER */}
         <div 
           style={styles.logoSection}
           onMouseEnter={() => setIsLogoHovered(true)}
@@ -39,7 +36,7 @@ const Layout = ({ onLogout }) => {
           </div>
           <span style={{
             ...styles.logoText,
-            color: isLogoHovered ? '#2563eb' : '#1e3a8a',
+            color: isLogoHovered ? '#60a5fa' : '#ffffff',
             transform: isLogoHovered ? 'translateX(5px)' : 'translateX(0)',
             transition: 'all 0.3s ease'
           }}>
@@ -48,14 +45,13 @@ const Layout = ({ onLogout }) => {
         </div>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-          {/* LOGOUT BUTTON WITH HOVER */}
           <button 
             style={{
               ...styles.logoutBtn,
-              background: isLogoutHovered ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)',
-              borderColor: isLogoutHovered ? '#be123c' : 'rgba(239, 68, 68, 0.2)',
+              background: isLogoutHovered ? 'rgba(251, 113, 133, 0.2)' : 'rgba(251, 113, 133, 0.1)',
+              borderColor: isLogoutHovered ? '#f43f5e' : 'rgba(251, 113, 133, 0.2)',
               transform: isLogoutHovered ? 'translateY(-2px)' : 'translateY(0)',
-              boxShadow: isLogoutHovered ? '0 4px 12px rgba(190, 18, 60, 0.2)' : 'none',
+              boxShadow: isLogoutHovered ? '0 4px 12px rgba(244, 63, 94, 0.2)' : 'none',
             }} 
             onMouseEnter={() => setIsLogoutHovered(true)}
             onMouseLeave={() => setIsLogoutHovered(false)}
@@ -75,7 +71,7 @@ const Layout = ({ onLogout }) => {
         <aside style={styles.sidebar}>
           <nav style={styles.nav}>
             <SidebarLink to="/dashboard" label="Dashboard" icon="📊" />
-            <SidebarLink to="/meetings/create" label="Create Meeting" icon="➕" />
+            <SidebarLink to="/meetings/create" label="Meeting Create / Update" icon="➕" />
             <SidebarLink to="/meetings" label="All Meetings" icon="📋" />
             <SidebarLink to="/employee-tasks" label="My Tasks" icon="🎯" />
             <SidebarLink to="/reports" label="Reports" icon="📈" />
@@ -109,7 +105,8 @@ const SidebarLink = ({ to, label, icon }) => {
     >
       <span style={{
         ...styles.icon,
-        color: highlight ? '#ffffff' : 'rgba(255, 255, 255, 0.5)',
+        /* Icons pop more against the lightened image */
+        color: highlight ? '#ffffff' : 'rgba(255, 255, 255, 0.7)',
         transform: isHovered ? 'scale(1.15) rotate(5deg)' : 'scale(1)',
         transition: 'all 0.3s ease'
       }}>
@@ -118,8 +115,8 @@ const SidebarLink = ({ to, label, icon }) => {
       
       <span style={{
         ...styles.linkLabel,
-        color: highlight ? '#ffffff' : 'rgba(255, 255, 255, 0.5)',
-        fontWeight: highlight ? '600' : '400',
+        color: highlight ? '#ffffff' : 'rgba(255, 255, 255, 0.8)',
+        fontWeight: highlight ? '700' : '500',
         transition: 'all 0.3s ease'
       }}>
         {label}
@@ -137,7 +134,7 @@ const styles = {
     fontFamily: 'Inter, -apple-system, sans-serif',
   },
   header: {
-    background: 'rgba(240, 249, 255, 0.6)', 
+    background: 'rgba(15, 23, 42, 0.75)', 
     backdropFilter: 'blur(20px) saturate(180%)',
     WebkitBackdropFilter: 'blur(20px) saturate(180%)',
     padding: '0.6rem 2.5rem',
@@ -147,29 +144,20 @@ const styles = {
     position: 'sticky',
     top: 0,
     zIndex: 100,
-    borderBottom: '1px solid rgba(255, 255, 255, 0.4)',
-    boxShadow: '0 4px 30px rgba(0, 0, 0, 0.05)',
+    borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+    boxShadow: '0 4px 30px rgba(0, 0, 0, 0.2)',
   },
-  logoSection: { 
-    display: 'flex', 
-    alignItems: 'center', 
-    gap: '15px', 
-    cursor: 'pointer' 
-  },
+  logoSection: { display: 'flex', alignItems: 'center', gap: '15px', cursor: 'pointer' },
   logoWrapper: { 
     height: '42px', width: '42px', display: 'flex', alignItems: 'center', 
     justifyContent: 'center', background: '#ffffff', padding: '6px',
-    borderRadius: '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+    borderRadius: '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
   },
   logoImage: { maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' },
-  logoText: { 
-    fontSize: '1.25rem', 
-    fontWeight: 800, 
-    display: 'inline-block' 
-  },
+  logoText: { fontSize: '1.25rem', fontWeight: 800, display: 'inline-block', letterSpacing: '0.5px' },
   logoutBtn: {
-    color: '#be123c', 
-    border: '1px solid',
+    color: '#fb7185',
+    border: '1px solid rgba(251, 113, 133, 0.2)',
     padding: '8px 16px',
     borderRadius: '8px', 
     cursor: 'pointer', 
@@ -183,15 +171,20 @@ const styles = {
     display: 'flex', 
     minHeight: 'calc(100vh - 65px)' 
   },
+  /* ✅ LIGHTENED SIDEBAR */
   sidebar: {
     width: '280px',
-    backgroundImage: `linear-gradient(to bottom, rgba(15, 23, 42, 0.85), rgba(15, 23, 42, 0.95)), url(${sidebarBg})`,
+    /* Reduced opacity from 0.95 to 0.65 to let the image show more */
+    backgroundImage: `linear-gradient(rgba(30, 41, 59, 0.65), rgba(15, 23, 42, 0.75)), url(${sidebarBg})`,
     backgroundSize: 'cover',
     backgroundPosition: 'center',
-    backgroundAttachment: 'fixed',
+    backgroundRepeat: 'no-repeat',
     color: 'white',
     padding: '1.5rem 0',
     borderRight: '1px solid rgba(255, 255, 255, 0.1)',
+    zIndex: 10,
+    /* Added a subtle blur to make text pop against the lightened image */
+    backdropFilter: 'blur(4px)',
   },
   nav: { display: 'flex', flexDirection: 'column', gap: '8px', padding: '0 12px' },
   sidebarLink: { 
@@ -200,32 +193,27 @@ const styles = {
     border: '1px solid transparent'
   },
   sidebarLinkHover: { 
-    background: 'rgba(255, 255, 255, 0.05)',
-    transform: 'translateX(6px)', 
+    background: 'rgba(255, 255, 255, 0.15)', 
+    transform: 'translateX(4px)' 
   },
   sidebarLinkActive: { 
-    background: 'rgba(59, 130, 246, 0.15)', 
-    border: '1px solid rgba(59, 130, 246, 0.3)',
-    boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1)'
+    background: 'rgba(59, 130, 246, 0.3)', 
+    border: '1px solid rgba(59, 130, 246, 0.5)',
+    boxShadow: '0 8px 20px rgba(0, 0, 0, 0.2)'
   },
   icon: { fontSize: '1.2rem', display: 'inline-block' },
   linkLabel: { fontSize: '0.95rem', letterSpacing: '0.3px' },
   mainContent: { 
     flex: 1, 
     padding: '2rem', 
-    backgroundImage: `linear-gradient(rgba(15, 23, 42, 0.75), rgba(15, 23, 42, 0.85)), url(${bgImage})`,
+    backgroundImage: `linear-gradient(rgba(15, 23, 42, 0.6), rgba(15, 23, 42, 0.6)), url(${bgImage})`,
     backgroundSize: 'cover',
     backgroundPosition: 'center',
     backgroundAttachment: 'fixed', 
     overflowY: 'auto',
-    color: '#ffffff'
+    color: '#f1f5f9'
   },
-  activeIndicator: { 
-    marginLeft: 'auto', 
-    color: '#3b82f6', 
-    fontWeight: 'bold', 
-    fontSize: '1.2rem' 
-  }
+  activeIndicator: { marginLeft: 'auto', color: '#60a5fa', fontWeight: 'bold', fontSize: '1.2rem' }
 };
 
 export default Layout;

@@ -5,7 +5,7 @@ import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 import { FaFileExcel, FaFilePdf, FaTrash, FaPlus, FaEraser, FaBookmark } from 'react-icons/fa';
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001";
+const API_URL = import.meta.env.VITE_API_URL || "http://192.168.11.175:5001";;
 
 const styles = {
   app: { 

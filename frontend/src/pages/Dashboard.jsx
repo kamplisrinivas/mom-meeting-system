@@ -1,12 +1,12 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001";
+const API_URL = import.meta.env.VITE_API_URL || "http://192.168.11.175:5001";
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [meetings, setMeetings] = useState([]); // This stays Global for KPIs and Tables
-  const [filteredRecent, setFilteredRecent] = useState([]); // This is ONLY for the Recent Meetings grid
+  const [meetings, setMeetings] = useState([]); 
+  const [filteredRecent, setFilteredRecent] = useState([]); 
   const [loading, setLoading] = useState(false);
   const [hoveredKpi, setHoveredKpi] = useState(null);
   const [hoveredMeeting, setHoveredMeeting] = useState(null);
@@ -21,7 +21,14 @@ export default function Dashboard() {
 
   const token = localStorage.getItem("token");
 
-  // 1. ORIGINAL FUNCTION: Fetch Raw Meetings (Used for KPIs and Dept Table)
+  // ✅ LOG 1: VERIFY RAW DATA
+  useEffect(() => {
+    if (meetings.length > 0) {
+      console.log("--- RAW DATA CHECK ---");
+      console.log("Sample Meeting:", meetings[0]);
+    }
+  }, [meetings]);
+
   const fetchData = useCallback(async () => {
     if (!token) return;
     try {
@@ -35,7 +42,6 @@ export default function Dashboard() {
     }
   }, [token]);
 
-  // 2. NEW FUNCTION: Fetch Filtered Data ONLY for Recent Meetings Grid
   const fetchFilteredGrid = useCallback(async () => {
     if (!token) return;
     try {
@@ -58,11 +64,9 @@ export default function Dashboard() {
     }
   }, [token, appliedFilters]);
 
-  // 3. ORIGINAL FUNCTION: Fetch Aggregated Stats (For User Workload)
   const fetchReportStats = useCallback(async () => {
     if (!token) return;
     try {
-      // Note: We keep this global (no filters) so the workload chart stays full
       const res = await fetch(`${API_URL}/api/reports/stats`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -84,21 +88,53 @@ export default function Dashboard() {
     fetchFilteredGrid();
   }, [fetchFilteredGrid, appliedFilters]);
 
-  // --- ORIGINAL KPI LOGIC (Uses global 'meetings' state) ---
+  // ✅ IMPROVED FORMATTER: Fixes the 12:00 AM issue
+  const formatDateTime = (m) => {
+  if (!m || !m.meeting_date) return "-";
+  
+  // 1. Extract Date (handles both string and Date objects)
+  const dateRaw = m.meeting_date;
+  const datePart = typeof dateRaw === 'string' 
+    ? dateRaw.split('T')[0].split(' ')[0] 
+    : new Date(dateRaw).toISOString().split('T')[0];
+
+  // 2. Identify the time field (handles potential casing issues)
+  const timePart = m.meeting_time || m.Meeting_Time || null;
+
+  // 3. If time is missing or exactly midnight, just show the date
+  if (!timePart || timePart === "00:00:00") {
+    return new Date(datePart).toLocaleDateString('en-IN', {
+      day: '2-digit', month: '2-digit', year: 'numeric'
+    });
+  }
+
+  try {
+    // 4. Force a clean ISO-like string merge: "2026-03-18T15:30:00"
+    const combinedDate = new Date(`${datePart}T${timePart}`);
+
+    return combinedDate.toLocaleString('en-IN', { 
+      day: '2-digit', 
+      month: '2-digit', 
+      year: 'numeric', 
+      hour: '2-digit', 
+      minute: '2-digit', 
+      hour12: true 
+    }).toUpperCase();
+  } catch (err) {
+    return datePart; // Fallback to just date if merge fails
+  }
+};
+
   const kpiData = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
-    const now = new Date();
     return {
       total: meetings.length,
-      today: meetings.filter(m => m?.meeting_date?.split(' ')[0] === today).length,
-      upcoming: meetings.filter(m => m?.meeting_date && new Date(m.meeting_date) > now).length,
-      completed: meetings.filter(m => m?.meeting_date && new Date(m.meeting_date) < now).length,
+      today: meetings.filter(m => m?.meeting_date?.includes(today)).length,
       online: meetings.filter(m => m?.meeting_type === 'Online').length,
       offline: meetings.filter(m => m?.meeting_type === 'Offline').length,
     };
   }, [meetings]);
 
-  // --- ORIGINAL DEPT STATS LOGIC (Uses global 'meetings' state) ---
   const localDeptStats = useMemo(() => {
     const counts = {};
     meetings.forEach(m => {
@@ -125,45 +161,34 @@ export default function Dashboard() {
   const handleApplyFilters = () => setAppliedFilters({ ...filters });
   const clearFilters = () => { setFilters({ dateFrom: "", dateTo: "", department: "" }); setAppliedFilters(null); };
 
-  const formatDateTime = (dateString) => {
-    if (!dateString) return "-";
-    const date = new Date(dateString);
-    return date.toLocaleString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }).toUpperCase();
-  };
-
   const mainCards = [
     { title: "Total Meetings", value: kpiData.total, icon: "📊", color: "#6366f1" },
     { title: "Meetings Today", value: kpiData.today, icon: "📅", color: "#10b981" },
-    { title: "Upcoming", value: kpiData.upcoming, icon: "🔄", color: "#f59e0b" },
-    { title: "Completed", value: kpiData.completed, icon: "✅", color: "#ef4444" },
-    { title: "Online", value: kpiData.online, icon: "💻", color: "#8b5cf6" },
-    { title: "Offline", value: kpiData.offline, icon: "🏢", color: "#06b6d4" }
+    { title: "Online Mode", value: kpiData.online, icon: "💻", color: "#8b5cf6" },
+    { title: "Offline Mode", value: kpiData.offline, icon: "🏢", color: "#06b6d4" }
   ];
 
   return (
     <div style={styles.container}>
-      {/* HEADER */}
       <div style={styles.pageHeader}>
         <div style={styles.headerContent}>
           <div>
             <h1 style={styles.h1}>MOM Dashboard</h1>
-            <p style={styles.headerText}>Full Analytics • {new Date().toLocaleDateString('en-IN')}</p>
+            <p style={styles.headerText}>SLR Metaliks • Performance & Schedule Analytics</p>
           </div>
           <button style={styles.viewAllBtn} onClick={() => navigate('/meetings')}>Manage All →</button>
         </div>
       </div>
 
       <div style={styles.contentWrapper}>
-        {/* KPI CARDS (STAY GLOBAL) */}
         <div style={styles.statsGrid}>
           {mainCards.map((card, index) => (
             <KpiCard key={index} {...card} isHovered={hoveredKpi === index} onMouseEnter={() => setHoveredKpi(index)} onMouseLeave={() => setHoveredKpi(null)} />
           ))}
         </div>
 
-        {/* ANALYTICS GRID (STAYS GLOBAL) */}
         <div style={styles.analyticsGrid}>
-          {/* Department Table */}
+          {/* Dept Table */}
           <div style={styles.glassTableCard}>
             <div style={styles.tableHeaderArea}><h3 style={styles.tableTitle}>Meetings / Department</h3></div>
             <div style={styles.scrollBox}>
@@ -181,7 +206,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* User Workload Table */}
+          {/* Load Table */}
           <div style={styles.glassTableCard}>
             <div style={styles.tableHeaderArea}><h3 style={styles.tableTitle}>User Task Load</h3></div>
             <div style={styles.scrollBox}>
@@ -203,7 +228,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* FILTER SECTION (Controls the grid below) */}
+        {/* Filters */}
         <div style={styles.filterSection}>
           <div style={styles.filterGroup}>
             <div style={styles.inputsWrapper}>
@@ -224,16 +249,13 @@ export default function Dashboard() {
               </div>
             </div>
             <div style={styles.buttonWrapper}>
-              <button onClick={handleApplyFilters} style={styles.applyBtn}>Filter</button>
+              <button onClick={handleApplyFilters} style={styles.applyBtn}>Filter Grid</button>
               <button onClick={clearFilters} style={styles.clearBtn}>Reset</button>
             </div>
           </div>
         </div>
 
-        {/* RECENT MEETINGS GRID (THIS SECTION ALONE RESPONDS TO FILTERS) */}
-        <h2 style={styles.sectionTitle}>
-          Recent Meetings {appliedFilters && <span style={styles.countBadge}>Filtered: {filteredRecent.length}</span>}
-        </h2>
+        <h2 style={styles.sectionTitle}>Recent Meetings</h2>
         
         {loading ? (
           <div style={styles.loadingSmall}>Updating grid...</div>
@@ -246,6 +268,7 @@ export default function Dashboard() {
                   transform: hoveredMeeting === index ? 'translateY(-5px)' : 'translateY(0)',
                   background: hoveredMeeting === index ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.05)',
                 }}
+                onClick={() => navigate(`/meeting/${m.id}`)}
               >
                 <div style={styles.cardHeader}>
                   <span style={styles.meetingId}>#{m.id}</span>
@@ -254,7 +277,7 @@ export default function Dashboard() {
                 <h3 style={styles.meetingTitle}>{m.title}</h3>
                 <p style={styles.deptText}>{m.department || "General"}</p>
                 <div style={styles.cardFooter}>
-                  <div style={styles.footerItem}>📅 {formatDateTime(m.meeting_date)}</div>
+                  <div style={styles.footerItem}>📅 {formatDateTime(m)}</div>
                 </div>
               </div>
             ))}
@@ -265,7 +288,6 @@ export default function Dashboard() {
   );
 }
 
-// KPI Component
 const KpiCard = ({ title, value, icon, color, isHovered, onMouseEnter, onMouseLeave }) => (
   <div onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}
     style={{ ...styles.kpiCard, borderLeftColor: color, background: isHovered ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.06)' }}
@@ -278,7 +300,6 @@ const KpiCard = ({ title, value, icon, color, isHovered, onMouseEnter, onMouseLe
   </div>
 );
 
-// Styles (Exactly as your original)
 const styles = {
   container: { width: '100%', boxSizing: 'border-box', color: '#fff', paddingBottom: '50px' },
   loadingSmall: { color: '#818cf8', textAlign: 'center', padding: '40px' },
@@ -311,16 +332,15 @@ const styles = {
   inputsWrapper: { display: 'flex', gap: '1.5rem' },
   inputItem: { display: 'flex', flexDirection: 'column', gap: '0.6rem' },
   label: { color: '#94a3b8', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' },
-  input: { background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', padding: '0.7rem 1rem', borderRadius: '10px', color: '#fff', outline: 'none', minWidth: '180px' },
+  input: { background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', padding: '0.7rem 1rem', borderRadius: '10px', color: '#fff', minWidth: '180px' },
   select: { background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', padding: '0.7rem 1rem', borderRadius: '10px', color: '#fff', minWidth: '200px' },
   applyBtn: { background: '#6366f1', color: '#fff', border: 'none', padding: '0.7rem 1.5rem', borderRadius: '10px', cursor: 'pointer', fontWeight: 700 },
   clearBtn: { background: 'rgba(255, 255, 255, 0.05)', color: '#fff', border: '1px solid rgba(255, 255, 255, 0.1)', padding: '0.7rem 1.5rem', borderRadius: '10px', cursor: 'pointer' },
   sectionTitle: { color: '#fff', fontSize: '1.5rem', marginBottom: '1.5rem', fontWeight: 800 },
-  countBadge: { background: 'rgba(99, 102, 241, 0.2)', padding: '4px 14px', borderRadius: '20px', color: '#818cf8', fontSize: '0.9rem', marginLeft: '10px' },
   countBadgeBlue: { background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', padding: '4px 12px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 800 },
   countBadgeGray: { background: 'rgba(255, 255, 255, 0.08)', color: '#94a3b8', padding: '4px 12px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 800 },
   meetingGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' },
-  meetingCard: { padding: '1.5rem', borderRadius: '18px', border: '1px solid rgba(255,255,255,0.1)', transition: 'all 0.3s ease' },
+  meetingCard: { padding: '1.5rem', borderRadius: '18px', border: '1px solid rgba(255,255,255,0.1)', transition: 'all 0.3s ease', cursor: 'pointer' },
   cardHeader: { display: 'flex', justifyContent: 'space-between' },
   meetingId: { opacity: 0.3 },
   meetingTitle: { margin: '10px 0' },
